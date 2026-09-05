@@ -13,7 +13,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "SANITAIR",
-  description: "Platform informasi dan pelaporan sanitasi",
+  description: "Deteksi resiko kesehatan akibat kondisi air Kaltim",
 };
 
 export default function RootLayout({

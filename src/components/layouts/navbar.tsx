@@ -47,7 +47,7 @@ export function Navbar() {
                 </NavigationMenu>
 
                 <div className="hidden items-center gap-2 md:flex">
-                    <Link href="/login">
+                    <Link href="/auth">
                         <Button
                             variant="outline"
                             className="border-secondary text-secondary-foreground hover:bg-secondary hover:text-white"
