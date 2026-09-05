@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  nohp         String   @unique
-  password     String
-  role         Role
-  profesi      Profesi?
-  instansi     String?
-  regions      UserRegion[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String          @id @default(cuid())
+  name       String
+  email      String          @unique
+  nohp       String          @unique
+  password   String
+  role       Role
+  profesi    Profesi?
+  instansi   String?
+  regions    UserRegion[]
+  facilities FacilityStaff[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
 }
 
 enum Role {
@@ -45,33 +46,33 @@ enum RegionStatus {
 }
 
 model Region {
-  id            String        @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String
   city          String
   province      String
   latitude      Decimal
   longitude     Decimal
-  status        RegionStatus  @default(AMAN)
+  status        RegionStatus   @default(AMAN)
   ipaStatus     IPAStatus
   ipaCondition  String?
   users         UserRegion[]
   healthReports HealthReport[]
   waterReports  WaterReport[]
   facilities    Facility[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([city])
   @@index([province])
 }
 
 model UserRegion {
-  id        String   @id @default(cuid())
-  userId    String
-  regionId  String
+  id       String @id @default(cuid())
+  userId   String
+  regionId String
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  region    Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  region Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -81,33 +82,33 @@ model UserRegion {
 }
 
 model HealthReport {
-  id             String   @id @default(cuid())
-  reporterName   String
-  reporterPhone  String
-  regionId       String
-  region         Region   @relation(fields: [regionId], references: [id])
-  diarrhea       Boolean  @default(false)
-  vomiting       Boolean  @default(false)
-  fever          Boolean  @default(false)
-  dehydration    Boolean  @default(false)
-  latitude       Float
-  longitude      Float
-  reportedAt     DateTime @default(now())
+  id            String   @id @default(cuid())
+  reporterName  String
+  reporterPhone String
+  regionId      String
+  region        Region   @relation(fields: [regionId], references: [id])
+  diarrhea      Boolean  @default(false)
+  vomiting      Boolean  @default(false)
+  fever         Boolean  @default(false)
+  dehydration   Boolean  @default(false)
+  latitude      Float
+  longitude     Float
+  reportedAt    DateTime @default(now())
 }
 
 model WaterReport {
-  id                String   @id @default(cuid())
-  reporterName      String
-  reporterPhone     String
-  regionId          String
-  region            Region   @relation(fields: [regionId], references: [id])
-  supplyDisruption  Boolean  @default(false)
-  dirtyOrSmelly     Boolean  @default(false)
-  saltyOrBrackish   Boolean  @default(false)
-  dryWell           Boolean  @default(false)
-  latitude          Float
-  longitude         Float
-  reportedAt        DateTime @default(now())
+  id               String   @id @default(cuid())
+  reporterName     String
+  reporterPhone    String
+  regionId         String
+  region           Region   @relation(fields: [regionId], references: [id])
+  supplyDisruption Boolean  @default(false)
+  dirtyOrSmelly    Boolean  @default(false)
+  saltyOrBrackish  Boolean  @default(false)
+  dryWell          Boolean  @default(false)
+  latitude         Float
+  longitude        Float
+  reportedAt       DateTime @default(now())
 }
 
 enum FacilityType {
@@ -117,23 +118,40 @@ enum FacilityType {
 }
 
 model Facility {
-  id            String       @id @default(cuid())
-  name          String
-  type          FacilityType
-  address       String
-  regionId      String
-  region        Region       @relation(fields: [regionId], references: [id])
+  id       String       @id @default(cuid())
+  name     String
+  type     FacilityType
+  address  String
+  regionId String
+  region   Region       @relation(fields: [regionId], references: [id])
 
-  latitude      Float
-  longitude     Float
+  latitude  Float
+  longitude Float
 
-  phone         String?
-  openingHours  String?
-  isActive      Boolean      @default(true)
+  phone        String?
+  openingHours String?
+  isActive     Boolean         @default(true)
+  staffs       FacilityStaff[]
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([regionId])
   @@index([type])
+}
+
+model FacilityStaff {
+  id String @id @default(cuid())
+
+  userId     String
+  facilityId String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, facilityId])
+  @@index([userId])
+  @@index([facilityId])
 }
