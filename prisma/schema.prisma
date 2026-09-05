@@ -16,7 +16,7 @@ model User {
   role         Role
   profesi      Profesi?
   instansi     String?
-  wilayahKerja String?
+  regions      UserRegion[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -54,6 +54,7 @@ model Region {
   status        RegionStatus  @default(AMAN)
   ipaStatus     IPAStatus
   ipaCondition  String?
+  users         UserRegion[]
   healthReports HealthReport[]
   waterReports  WaterReport[]
   createdAt     DateTime      @default(now())
@@ -61,6 +62,21 @@ model Region {
 
   @@index([city])
   @@index([province])
+}
+
+model UserRegion {
+  id        String   @id @default(cuid())
+  userId    String
+  regionId  String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  region    Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, regionId])
+  @@index([userId])
+  @@index([regionId])
 }
 
 model HealthReport {

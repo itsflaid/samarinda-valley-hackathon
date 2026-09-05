@@ -52,7 +52,8 @@ export async function POST(req: Request) {
             redirectTo = "/petugas/dashboard";
         }
 
-        return NextResponse.json({
+        // Buat response
+        const response = NextResponse.json({
             message: "Login berhasil",
             user: {
                 id: user.id,
@@ -66,6 +67,17 @@ export async function POST(req: Request) {
             },
             redirectTo,
         });
+
+        // Simpan session sederhana di cookie
+        response.cookies.set("session", user.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7, // 7 hari
+        });
+
+        return response;
     } catch (error) {
         console.error(error);
 
@@ -75,4 +87,3 @@ export async function POST(req: Request) {
         );
     }
 }
-
