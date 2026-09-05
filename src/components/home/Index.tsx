@@ -1,12 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import dynamic from "next/dynamic";
+import {
+  useCallback,
+  useSyncExternalStore,
+} from "react";
 
 import { Hero } from "@/components/home/Hero";
-import { RegionMap } from "@/components/home/Map";
 import { CardInfo } from "@/components/home/CardInfo";
 
 import type { DummyRegion } from "@/lib/mock-data";
+
+const RegionMap = dynamic(
+  () =>
+    import("@/components/home/Map").then(
+      (mod) => mod.RegionMap
+    ),
+  {
+    ssr: false,
+  }
+);
 
 const LOCATION_STORAGE_KEY = "user-location";
 
@@ -18,15 +31,37 @@ interface UserLocation {
   region: DummyRegion;
 }
 
-function getStoredLocation(): UserLocation | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
 
-  const stored = sessionStorage.getItem(
-    LOCATION_STORAGE_KEY
+function subscribe(
+  callback: () => void
+) {
+  window.addEventListener(
+    "user-location-change",
+    callback
   );
 
+  return () => {
+    window.removeEventListener(
+      "user-location-change",
+      callback
+    );
+  };
+}
+
+
+function getServerSnapshot() {
+  return null;
+}
+
+function getClientSnapshot() {
+  return sessionStorage.getItem(
+    LOCATION_STORAGE_KEY
+  );
+}
+
+function parseLocation(
+  stored: string | null
+): UserLocation | null {
   if (!stored) {
     return null;
   }
@@ -40,10 +75,12 @@ function getStoredLocation(): UserLocation | null {
       typeof parsed.coords.lng === "number" &&
       parsed?.region
     ) {
-      return parsed;
+      return parsed as UserLocation;
     }
 
-    sessionStorage.removeItem(LOCATION_STORAGE_KEY);
+    sessionStorage.removeItem(
+      LOCATION_STORAGE_KEY
+    );
 
     return null;
   } catch (error) {
@@ -52,36 +89,54 @@ function getStoredLocation(): UserLocation | null {
       error
     );
 
-    sessionStorage.removeItem(LOCATION_STORAGE_KEY);
+    sessionStorage.removeItem(
+      LOCATION_STORAGE_KEY
+    );
 
     return null;
   }
 }
 
 export function HomeContent() {
-  const [userLocation, setUserLocation] =
-    useState<UserLocation | null>(() => getStoredLocation());
+  const storedLocation =
+    useSyncExternalStore(
+      subscribe,
+      getClientSnapshot,
+      getServerSnapshot
+    );
+
+  const userLocation =
+    parseLocation(storedLocation);
+
+  const saveLocation = useCallback(
+    (
+      region: DummyRegion,
+      lat: number,
+      lng: number
+    ) => {
+      const location: UserLocation = {
+        coords: {
+          lat,
+          lng,
+        },
+        region,
+      };
+
+      sessionStorage.setItem(
+        LOCATION_STORAGE_KEY,
+        JSON.stringify(location)
+      );
+
+      window.dispatchEvent(
+        new Event("user-location-change")
+      );
+    },
+    []
+  );
 
   return (
     <div>
-      <Hero
-        onLocate={(region, lat, lng) => {
-          const location: UserLocation = {
-            coords: {
-              lat,
-              lng,
-            },
-            region,
-          };
-
-          setUserLocation(location);
-
-          sessionStorage.setItem(
-            LOCATION_STORAGE_KEY,
-            JSON.stringify(location)
-          );
-        }}
-      />
+      <Hero onLocate={saveLocation} />
 
       <RegionMap
         userCoords={userLocation?.coords}
@@ -95,4 +150,3 @@ export function HomeContent() {
     </div>
   );
 }
-

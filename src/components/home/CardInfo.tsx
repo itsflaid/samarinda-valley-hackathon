@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   Activity,
   Droplets,
@@ -13,6 +15,7 @@ import {
   statusColors,
   type DummyRegion,
 } from "@/lib/mock-data";
+import { HealthGuideModal } from "./HealthGuideModal";
 
 interface CardInfoProps {
   userCoords?: {
@@ -21,15 +24,13 @@ interface CardInfoProps {
   };
 
   userRegion?: DummyRegion;
-
-  onDetail?: () => void;
 }
 
 export function CardInfo({
   userCoords,
   userRegion,
-  onDetail,
 }: CardInfoProps) {
+  const [guideOpen, setGuideOpen] = useState(false);
   if (!userCoords) {
     return (
       <section className="px-6 py-12">
@@ -208,7 +209,7 @@ export function CardInfo({
           <div className="flex flex-col gap-3 border-t border-border p-6 sm:flex-row">
             <button
               type="button"
-              onClick={onDetail}
+              onClick={() => setGuideOpen(true)}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Lihat Detail Wilayah
@@ -216,6 +217,12 @@ export function CardInfo({
           </div>
         </div>
       </div>
+
+      <HealthGuideModal
+        region={region}
+        open={guideOpen}
+        onOpenChange={setGuideOpen}
+      />
     </section>
   );
 }
