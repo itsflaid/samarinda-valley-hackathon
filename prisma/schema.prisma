@@ -16,7 +16,7 @@ model User {
   role         Role
   profesi      Profesi?
   instansi     String?
-  wilayahKerja String?
+  regions      UserRegion[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -54,6 +54,7 @@ model Region {
   status        RegionStatus  @default(AMAN)
   ipaStatus     IPAStatus
   ipaCondition  String?
+  users         UserRegion[]
   healthReports HealthReport[]
   waterReports  WaterReport[]
   createdAt     DateTime      @default(now())
