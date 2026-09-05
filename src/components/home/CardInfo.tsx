@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Activity,
@@ -13,8 +13,10 @@ import {
 
 import {
   statusColors,
-  type DummyRegion,
-} from "@/lib/mock-data";
+  type RegionData,
+  type RegionDetail,
+} from "@/types/region";
+import { formatRelativeTime } from "@/lib/utils";
 import { HealthGuideModal } from "./HealthGuideModal";
 
 interface CardInfoProps {
@@ -23,7 +25,7 @@ interface CardInfoProps {
     lng: number;
   };
 
-  userRegion?: DummyRegion;
+  userRegion?: RegionData | RegionDetail;
 }
 
 export function CardInfo({
@@ -31,6 +33,15 @@ export function CardInfo({
   userRegion,
 }: CardInfoProps) {
   const [guideOpen, setGuideOpen] = useState(false);
+  const [detail, setDetail] = useState<RegionDetail | null>(null);
+
+  useEffect(() => {
+    if (!userRegion) return;
+    fetch(`/api/regions/${userRegion.id}`)
+      .then((res) => res.json())
+      .then((data: RegionDetail) => setDetail(data))
+      .catch(() => {});
+  }, [userRegion]);
   if (!userCoords) {
     return (
       <section className="px-6 py-12">
@@ -153,7 +164,7 @@ export function CardInfo({
                   </p>
 
                   <p className="font-semibold">
-                    {region.symptomReports ?? "N/A"}
+                    {detail?.healthReports?.total ?? ("symptomReports" in region ? region.symptomReports : "N/A")}
                   </p>
                 </div>
               </div>
@@ -198,9 +209,9 @@ export function CardInfo({
                     Pembaruan Terakhir
                   </p>
 
-                  <p className="font-semibold">
-                    {region.lastUpdated ?? "N/A"}
-                  </p>
+                    <p className="font-semibold">
+                      {detail?.lastUpdated ? formatRelativeTime(detail.lastUpdated) : "N/A"}
+                    </p>
                 </div>
               </div>
             </div>

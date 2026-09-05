@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import {
   Dialog,
@@ -8,15 +9,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import type { DummyRegion } from "@/lib/mock-data";
-import { statusColors } from "@/lib/mock-data";
+import type { RegionData, RegionDetail } from "@/types/region";
+import { statusColors } from "@/types/region";
+import { formatRelativeTime } from "@/lib/utils";
 import {
   preventionGuides,
   redFlags,
 } from "@/lib/prevention-data";
 
 interface HealthGuideModalProps {
-  region: DummyRegion;
+  region: RegionData | RegionDetail;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -26,7 +28,18 @@ export function HealthGuideModal({
   open,
   onOpenChange,
 }: HealthGuideModalProps) {
+  const [detail, setDetail] = useState<RegionDetail | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch(`/api/regions/${region.id}`)
+      .then((res) => res.json())
+      .then((data: RegionDetail) => setDetail(data))
+      .catch(() => {});
+  }, [open, region.id]);
+
   const guide = preventionGuides[region.status];
+  const data = detail;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,12 +89,36 @@ export function HealthGuideModal({
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Laporan Gejala</p>
+                <p className="text-muted-foreground">Laporan Kesehatan</p>
                 <p className="font-medium">
-                  {region.symptomReports ?? "N/A"}
+                  {data?.healthReports?.total ?? "N/A"}
                 </p>
               </div>
             </div>
+
+            {data?.healthReports && (
+              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                <span>Diare: {data.healthReports.diarrhea}</span>
+                <span>Muntah: {data.healthReports.vomiting}</span>
+                <span>Demam: {data.healthReports.fever}</span>
+                <span>Dehidrasi: {data.healthReports.dehydration}</span>
+              </div>
+            )}
+
+            {data?.waterReports && (
+              <>
+                <div className="border-t border-border pt-2">
+                  <p className="text-sm font-medium">Laporan Air</p>
+                  <p className="text-sm">{data.waterReports.total} laporan</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <span>Pasokan terganggu: {data.waterReports.supplyDisruption}</span>
+                  <span>Keruh/bau: {data.waterReports.dirtyOrSmelly}</span>
+                  <span>Asin/payau: {data.waterReports.saltyOrBrackish}</span>
+                  <span>Sumur kering: {data.waterReports.dryWell}</span>
+                </div>
+              </>
+            )}
 
             {region.ipaCondition && (
               <p className="text-sm text-muted-foreground">
@@ -92,7 +129,7 @@ export function HealthGuideModal({
             <div className="text-sm">
               <p className="text-muted-foreground">Pembaruan Terakhir</p>
               <p className="font-medium">
-                {region.lastUpdated ?? "N/A"}
+                {data?.lastUpdated ? formatRelativeTime(data.lastUpdated) : "N/A"}
               </p>
             </div>
           </div>

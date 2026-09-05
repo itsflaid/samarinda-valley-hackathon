@@ -17,11 +17,7 @@ import {
     Minimize2,
 } from "lucide-react";
 
-import {
-    dummyRegions,
-    statusColors,
-    type DummyRegion,
-} from "@/lib/mock-data";
+import { statusColors, type RegionData, type RegionDetail } from "@/types/region";
 
 import "leaflet/dist/leaflet.css";
 
@@ -31,7 +27,7 @@ interface RegionMapProps {
         lng: number;
     };
 
-    userRegion?: DummyRegion;
+    userRegion?: RegionData | RegionDetail;
 }
 
 const defaultCenter: [number, number] = [
@@ -87,7 +83,7 @@ function MapController({
 function RegionPopup({
     region,
 }: {
-    region: DummyRegion;
+    region: RegionData;
 }) {
     return (
         <div className="min-w-45">
@@ -144,7 +140,7 @@ function UserLocationMarker({
         lng: number;
     };
 
-    userRegion?: DummyRegion;
+    userRegion?: RegionData | RegionDetail;
 }) {
     const popupContent = userRegion ? (
         <div className="min-w-37.5">
@@ -199,6 +195,14 @@ export function RegionMap({
 }: RegionMapProps) {
     const [fullscreen, setFullscreen] =
         useState(false);
+    const [regions, setRegions] = useState<RegionData[]>([]);
+
+    useEffect(() => {
+        fetch("/api/regions")
+            .then((res) => res.json())
+            .then((data: RegionData[]) => setRegions(data))
+            .catch(() => {});
+    }, []);
 
     return (
         <section className="px-6 py-10">
@@ -225,7 +229,7 @@ export function RegionMap({
                             userCoords={userCoords}
                         />
 
-                        {dummyRegions.map(
+                        {regions.map(
                             (region) => (
                                 <Marker
                                     key={region.id}

@@ -9,7 +9,7 @@ import {
 import { Hero } from "@/components/home/Hero";
 import { CardInfo } from "@/components/home/CardInfo";
 
-import type { DummyRegion } from "@/lib/mock-data";
+import type { RegionData } from "@/types/region";
 
 const RegionMap = dynamic(
   () =>
@@ -28,7 +28,7 @@ interface UserLocation {
     lat: number;
     lng: number;
   };
-  region: DummyRegion;
+  region: RegionData;
 }
 
 
@@ -110,7 +110,7 @@ export function HomeContent() {
 
   const saveLocation = useCallback(
     (
-      region: DummyRegion,
+      region: RegionData,
       lat: number,
       lng: number
     ) => {
