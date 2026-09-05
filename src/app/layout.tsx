@@ -25,18 +25,12 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+      className={jakarta.variable}>
       <body className="min-h-full flex flex-col">
         <AuthSessionProvider>
         {children}
         <Toaster position="top-right" richColors />
         </AuthSessionProvider>
-    <html lang="id" className={jakarta.variable}>
-      <body className="antialiased">
-        <Navbar />
-
-        <main>{children}</main>
       </body>
     </html>
   );
