@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
 import { Navbar } from "@/components/layouts/navbar";
 
 const jakarta = Plus_Jakarta_Sans({
