@@ -116,9 +116,7 @@ export function Hero({ onLocate }: HeroProps) {
         <section className="flex min-h-[50vh] flex-col items-center justify-center px-6 pt-10 text-center">
             <div className="max-w-3xl">
                 <h1 className="mb-4 text-3xl font-bold leading-tight tracking-tight text-primary sm:text-4xl md:text-5xl">
-                    Kenali kondisi wilayah.
-                    <br />
-                    Jaga kesehatan lebih awal.
+                    Deteksi Dini Risiko Kesehatan Akibat Kondisi Air Kaltim
                 </h1>
 
                 <p className="mb-8 text-base text-muted-foreground md:text-lg">

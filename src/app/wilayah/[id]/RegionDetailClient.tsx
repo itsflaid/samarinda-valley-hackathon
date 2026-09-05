@@ -22,11 +22,6 @@ export function RegionDetailClient({
 }) {
   const router = useRouter();
 
-  const regionCoords = {
-    lat: regionDetail.latitude,
-    lng: regionDetail.longitude,
-  };
-
   return (
     <main className="py-8">
       <div className="mx-auto max-w-6xl px-6">
@@ -39,31 +34,20 @@ export function RegionDetailClient({
           Kembali
         </button>
 
-        <div className="mb-8">
-          <p className="text-sm text-muted-foreground">
-            Detail Wilayah
-          </p>
-
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">
-            {regionDetail.name}
-          </h1>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            {regionDetail.city}, {regionDetail.province}
-          </p>
-        </div>
 
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
           <div className="min-w-0">
             <RegionMap
-              userCoords={regionCoords}
-              userRegion={regionDetail}
+              selectedRegion={regionDetail}
             />
           </div>
 
           <div className="min-w-0">
             <CardInfo
-              userCoords={regionCoords}
+              userCoords={{
+                lat: regionDetail.latitude,
+                lng: regionDetail.longitude,
+              }}
               userRegion={regionDetail}
               regionDetail={regionDetail}
             />
