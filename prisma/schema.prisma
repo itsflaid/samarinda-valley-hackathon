@@ -64,6 +64,21 @@ model Region {
   @@index([province])
 }
 
+model UserRegion {
+  id        String   @id @default(cuid())
+  userId    String
+  regionId  String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  region    Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, regionId])
+  @@index([userId])
+  @@index([regionId])
+}
+
 model HealthReport {
   id             String   @id @default(cuid())
   reporterName   String
