@@ -70,15 +70,15 @@ const sidebarData = {
     ],
     lainnya: [
       {
-        name: "Pemeriksaan",
-        url: "/nakes/pemeriksaan",
+        name: "Laporan",
+        url: "/nakes/laporan",
         icon: HiOutlineUserGroup,
       },
-      {
-        name: "Peringatan",
-        url: "/nakes/peringatan",
-        icon: HiOutlineShieldCheck,
-      },
+      // {
+      //   name: "Riwayat Laporan",
+      //   url: "/nakes/riwayat-laporan",
+      //   icon: HiOutlineShieldCheck,
+      // },
     ],
   },
 
@@ -92,13 +92,13 @@ const sidebarData = {
     ],
     lainnya: [
       {
-        name: "Status",
+        name: "Status Air",
         url: "/petugas/status",
         icon: HiOutlineUserGroup,
       },
       {
-        name: "Tugas Lapangan",
-        url: "/petugas/tugas",
+        name: "Laporan",
+        url: "/petugas/laporan",
         icon: HiOutlineShieldCheck,
       },
     ],

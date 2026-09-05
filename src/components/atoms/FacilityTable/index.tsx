@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -52,6 +52,49 @@ export function FacilityTable({
     const [isLoading, setIsLoading] = useState(true);
     const [isDeleteLoading, setIsDeleteLoading] =
         useState(false);
+    const [editingFacility, setEditingFacility] =
+        useState<Facility | null>(null);
+    const [regions, setRegions] = useState<Region[]>([]);
+
+    const [editForm, setEditForm] = useState({
+        name: "",
+        type: "PUSKESMAS" as FacilityType,
+        address: "",
+        regionId: "",
+        latitude: "",
+        longitude: "",
+        phone: "",
+        openingHours: "",
+        isActive: true,
+    });
+
+    const [isEditSubmitting, setIsEditSubmitting] =
+        useState(false);
+
+    const fetchRegions = async () => {
+        try {
+            const response = await fetch("/api/regions");
+
+            if (!response.ok) {
+                throw new Error(
+                    "Gagal mengambil wilayah"
+                );
+            }
+
+            const data = await response.json();
+
+            setRegions(data);
+        } catch (error) {
+            console.error(
+                "FETCH REGIONS ERROR:",
+                error
+            );
+
+            toast.error(
+                "Gagal mengambil data wilayah"
+            );
+        }
+    };
 
     const fetchFacilities = async () => {
         try {
@@ -78,8 +121,9 @@ export function FacilityTable({
     };
 
     useEffect(() => {
-        fetchFacilities();
-    }, []);
+    fetchFacilities();
+    fetchRegions();
+}, []);
 
     const formatType = (type: FacilityType) => {
         if (type === "PUSKESMAS") {
@@ -94,9 +138,123 @@ export function FacilityTable({
     };
 
     const handleEdit = (facility: Facility) => {
-        console.log("Edit fasilitas:", facility);
+        setEditingFacility(facility);
 
-        // Form Edit akan kita pasang di tahap berikutnya.
+        setEditForm({
+            name: facility.name,
+            type: facility.type,
+            address: facility.address,
+            regionId: facility.regionId,
+            latitude: String(facility.latitude),
+            longitude: String(facility.longitude),
+            phone: facility.phone ?? "",
+            openingHours:
+                facility.openingHours ?? "",
+            isActive: facility.isActive,
+        });
+    };
+
+    const handleEditChange = (
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >
+    ) => {
+        const { name, value, type } = e.target;
+
+        setEditForm((prev) => ({
+            ...prev,
+            [name]:
+                type === "checkbox"
+                    ? (e.target as HTMLInputElement)
+                        .checked
+                    : value,
+        }));
+    };
+
+    const handleEditSubmit = async (
+        e: React.FormEvent<HTMLFormElement>
+    ) => {
+        e.preventDefault();
+
+        if (!editingFacility) {
+            return;
+        }
+
+        if (
+            !editForm.name ||
+            !editForm.address ||
+            !editForm.regionId ||
+            !editForm.latitude ||
+            !editForm.longitude
+        ) {
+            toast.error(
+                "Lengkapi data fasilitas terlebih dahulu"
+            );
+            return;
+        }
+
+        try {
+            setIsEditSubmitting(true);
+
+            const response = await fetch(
+                `/api/facilities/${editingFacility.id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        name: editForm.name,
+                        type: editForm.type,
+                        address: editForm.address,
+                        regionId: editForm.regionId,
+                        latitude: Number(
+                            editForm.latitude
+                        ),
+                        longitude: Number(
+                            editForm.longitude
+                        ),
+                        phone:
+                            editForm.phone || null,
+                        openingHours:
+                            editForm.openingHours ||
+                            null,
+                        isActive:
+                            editForm.isActive,
+                    }),
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.message ||
+                    "Gagal memperbarui fasilitas"
+                );
+            }
+
+            toast.success(
+                "Fasilitas berhasil diperbarui"
+            );
+
+            setEditingFacility(null);
+
+            await fetchFacilities();
+        } catch (error) {
+            console.error(
+                "EDIT FACILITY ERROR:",
+                error
+            );
+
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Gagal memperbarui fasilitas"
+            );
+        } finally {
+            setIsEditSubmitting(false);
+        }
     };
 
     const handleDelete = async (facility: Facility) => {
@@ -349,7 +507,237 @@ export function FacilityTable({
 
                 </div>
             </section>
+            {editingFacility && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-2xl rounded-xl bg-background shadow-xl">
+                        {/* HEADER */}
+                        <div className="flex items-center justify-between border-b px-6 py-4">
+                            <div>
+                                <h3 className="text-lg font-semibold">
+                                    Edit Fasilitas
+                                </h3>
 
+                                <p className="text-sm text-muted-foreground">
+                                    Perbarui informasi fasilitas kesehatan.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setEditingFacility(null)
+                                }
+                                disabled={isEditSubmitting}
+                                className="rounded-md p-2 hover:bg-muted disabled:opacity-50"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* FORM */}
+                        <form
+                            onSubmit={handleEditSubmit}
+                            className="max-h-[75vh] overflow-y-auto"
+                        >
+                            <div className="space-y-5 px-6 py-5">
+                                {/* NAMA */}
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium">
+                                        Nama Fasilitas
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={editForm.name}
+                                        onChange={handleEditChange}
+                                        className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* JENIS */}
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium">
+                                        Jenis Fasilitas
+                                    </label>
+
+                                    <select
+                                        name="type"
+                                        value={editForm.type}
+                                        onChange={handleEditChange}
+                                        className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                    >
+                                        <option value="PUSKESMAS">
+                                            Puskesmas
+                                        </option>
+
+                                        <option value="RUMAH_SAKIT">
+                                            Rumah Sakit
+                                        </option>
+
+                                        <option value="KLINIK">
+                                            Klinik
+                                        </option>
+                                    </select>
+                                </div>
+
+                                {/* WILAYAH */}
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium">
+                                        Wilayah
+                                    </label>
+
+                                    <select
+                                        name="regionId"
+                                        value={editForm.regionId}
+                                        onChange={handleEditChange}
+                                        className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                        required
+                                    >
+                                        <option value="">
+                                            Pilih wilayah
+                                        </option>
+
+                                        {regions.map(
+                                            (region) => (
+                                                <option
+                                                    key={region.id}
+                                                    value={region.id}
+                                                >
+                                                    {region.name} -{" "}
+                                                    {region.city}
+                                                </option>
+                                            )
+                                        )}
+                                    </select>
+                                </div>
+
+                                {/* ALAMAT */}
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium">
+                                        Alamat
+                                    </label>
+
+                                    <textarea
+                                        name="address"
+                                        value={editForm.address}
+                                        onChange={handleEditChange}
+                                        rows={3}
+                                        className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* LATITUDE */}
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium">
+                                        Latitude
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        name="latitude"
+                                        value={editForm.latitude}
+                                        onChange={handleEditChange}
+                                        className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* LONGITUDE */}
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium">
+                                        Longitude
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        name="longitude"
+                                        value={editForm.longitude}
+                                        onChange={handleEditChange}
+                                        className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                        required
+                                    />
+                                </div>
+
+                                {/* PHONE */}
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium">
+                                        Nomor Telepon
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        name="phone"
+                                        value={editForm.phone}
+                                        onChange={handleEditChange}
+                                        className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                    />
+                                </div>
+
+                                {/* JAM */}
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium">
+                                        Jam Operasional
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        name="openingHours"
+                                        value={
+                                            editForm.openingHours
+                                        }
+                                        onChange={handleEditChange}
+                                        placeholder="08:00 - 16:00"
+                                        className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                                    />
+                                </div>
+
+                                {/* STATUS */}
+                                <label className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        name="isActive"
+                                        checked={editForm.isActive}
+                                        onChange={handleEditChange}
+                                    />
+
+                                    <span className="text-sm font-medium">
+                                        Fasilitas aktif
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* FOOTER */}
+                            <div className="flex justify-end gap-3 border-t px-6 py-4">
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setEditingFacility(null)
+                                    }
+                                    disabled={isEditSubmitting}
+                                    className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                                >
+                                    Batal
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    disabled={isEditSubmitting}
+                                    className="rounded-md bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {isEditSubmitting
+                                        ? "Menyimpan..."
+                                        : "Simpan Perubahan"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

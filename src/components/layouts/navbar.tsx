@@ -28,6 +28,10 @@ export function Navbar() {
     return (
         <nav className="sticky top-0 z-50 border-b border-border bg-white/80 backdrop-blur-md">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+<<<<<<< HEAD
+                <Link href="/" className="flex items-center gap-2 font-bold text-primary">
+                    <Image src="/images/logos.webp" alt="SANITAIR" width={32} height={32} className="h-8 w-auto" />
+=======
                 <Link
                     href="/"
                     className="flex items-center gap-2 font-bold text-primary"
@@ -39,6 +43,7 @@ export function Navbar() {
                         height={32}
                         className="h-8 w-auto"
                     />
+>>>>>>> 334f6f186167aa34294285d00751522e37bab653
                     <span className="text-lg tracking-tight">SANITAIR</span>
                 </Link>
 
