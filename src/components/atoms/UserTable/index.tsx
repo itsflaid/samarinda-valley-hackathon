@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 type User = {
   id: string;
@@ -165,14 +166,14 @@ export function UserTable({
       const data = await response.json();
 
       if (!response.ok) {
-        alert(
+        toast.error(
           data.message ||
           "Gagal menyimpan user"
         );
         return;
       }
 
-      alert(
+      toast.success(
         editingUser
           ? "User berhasil diperbarui"
           : "User berhasil ditambahkan"
@@ -195,7 +196,7 @@ export function UserTable({
     } catch (error) {
       console.error(error);
 
-      alert("Terjadi kesalahan");
+      toast.error("Terjadi kesalahan");
     } finally {
       setIsSubmitting(false);
     }
@@ -239,20 +240,20 @@ export function UserTable({
       const data = await response.json();
 
       if (!response.ok) {
-        alert(
+        toast.error(
           data.message ||
           "Gagal menghapus user"
         );
         return;
       }
 
-      alert("User berhasil dihapus");
+      toast.success("User berhasil dihapus");
 
       await fetchUsers();
     } catch (error) {
       console.error(error);
 
-      alert("Terjadi kesalahan");
+      toast.error("Terjadi kesalahan");
     } finally {
       setIsDeleteLoading(false);
     }
