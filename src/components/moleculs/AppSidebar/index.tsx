@@ -32,49 +32,81 @@ import { PiClockClockwiseBold } from "react-icons/pi";
 import { useSession } from "next-auth/react"
 // import { useProfile } from "@/hooks/use-profile"
 
-const data = {
+const sidebarData = {
+  ADMIN: {
+    dashboard: [
+      {
+        name: "Dashboard",
+        url: "/admin/dashboard",
+        icon: HiOutlineSquares2X2,
+      },
+    ],
+    lainnya: [
+      {
+        name: "Nakes",
+        url: "/admin/nakes",
+        icon: HiOutlineUserGroup,
+      },
+      {
+        name: "Petugas",
+        url: "/admin/petugas",
+        icon: HiOutlineShieldCheck,
+      },
+    ],
+  },
 
-  navSecondary: [
-    {
-      title: "Support",
-      url: "/dashboard/admin/support",
-      icon: LifeBuoy,
-    },
-    {
-      title: "Feedback",
-      url: "/dashboard/admin/feedback",
-      icon: Send,
-    },
-  ],
+  NAKES: {
+    dashboard: [
+      {
+        name: "Dashboard",
+        url: "/nakes/dashboard",
+        icon: HiOutlineSquares2X2,
+      },
+    ],
+    lainnya: [
+      {
+        name: "Pemeriksaan",
+        url: "/nakes/pemeriksaan",
+        icon: HiOutlineUserGroup,
+      },
+      {
+        name: "Peringatan",
+        url: "/nakes/peringatan",
+        icon: HiOutlineShieldCheck,
+      },
+    ],
+  },
 
-  dashboard: [
-    {
-      name: "Dashboard",
-      url: "/admin/dashboard",
-      icon: HiOutlineSquares2X2,
-    },
-  ],
-
-  lainnya: [
-    {
-      name: "Nakes",
-      url: "/admin/nakes",
-      icon: HiOutlineUserGroup,
-    },
-    {
-      name: "Petugas",
-      url: "/admin/petugas",
-      icon: HiOutlineShieldCheck,
-    },
-  ],
+  PETUGAS: {
+    dashboard: [
+      {
+        name: "Dashboard",
+        url: "/petugas/dashboard",
+        icon: HiOutlineSquares2X2,
+      },
+    ],
+    lainnya: [
+      {
+        name: "Status",
+        url: "/petugas/status",
+        icon: HiOutlineUserGroup,
+      },
+      {
+        name: "Tugas Lapangan",
+        url: "/petugas/tugas",
+        icon: HiOutlineShieldCheck,
+      },
+    ],
+  },
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // const { data: user, isLoading, error } = useProfile()
   const { data: session, status } = useSession()
 
-  console.log("SESSION:", session)
-console.log("STATUS:", status)
+  const role = session?.user?.role
+
+  const data = sidebarData[role as keyof typeof sidebarData]
 
   const user = {
     name: session?.user?.name ?? "User",
@@ -105,9 +137,13 @@ console.log("STATUS:", status)
       </SidebarHeader>
 
       <SidebarContent>
-        <NavProjects projects={data.dashboard} title="Dashboard" />
-        <NavProjects projects={data.lainnya} title="Manajemen Nakesh & Penjaga" />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        {data && (
+          <>
+            <NavProjects projects={data.dashboard} title="Dashboard" />
+            <NavProjects projects={data.lainnya} title="Menu" />
+          </>
+        )}
+        {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
 
       <SidebarFooter>

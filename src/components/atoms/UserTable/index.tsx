@@ -12,7 +12,13 @@ type User = {
   role: "NAKES" | "PETUGAS";
   profesi?: "DOKTER" | "PERAWAT" | "BIDAN";
   instansi?: string;
-  wilayahKerja?: string;
+  regions?: Region[];
+};
+
+type Region = {
+  id: string;
+  name: string;
+  city: string;
 };
 
 const users: User[] = [
@@ -24,7 +30,6 @@ const users: User[] = [
     role: "NAKES",
     profesi: "DOKTER",
     instansi: "Puskesmas Palaran",
-    wilayahKerja: "Samarinda",
   },
   {
     id: "2",
@@ -34,7 +39,6 @@ const users: User[] = [
     role: "NAKES",
     profesi: "PERAWAT",
     instansi: "Puskesmas Samarinda",
-    wilayahKerja: "Samarinda",
   },
   {
     id: "3",
@@ -43,7 +47,6 @@ const users: User[] = [
     nohp: "081234567892",
     role: "PETUGAS",
     instansi: "Puskesmas Palaran",
-    wilayahKerja: "Samarinda",
   },
   {
     id: "4",
@@ -52,7 +55,6 @@ const users: User[] = [
     nohp: "081234567893",
     role: "PETUGAS",
     instansi: "Puskesmas Sungai Kunjang",
-    wilayahKerja: "Samarinda",
   },
 ];
 
@@ -80,6 +82,8 @@ export function UserTable({
   role: User["role"];
 }) {
   const [users, setUsers] = useState<User[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +100,6 @@ export function UserTable({
     password: "",
     profesi: "",
     instansi: "",
-    wilayahKerja: "",
   });
 
   const fetchUsers = async () => {
@@ -121,9 +124,27 @@ export function UserTable({
     }
   };
 
+  const fetchRegions = async () => {
+    try {
+      const response = await fetch("/api/regions");
+
+      if (!response.ok) {
+        throw new Error("Gagal mengambil wilayah");
+      }
+
+      const data = await response.json();
+      setRegions(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Gagal mengambil data wilayah");
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchRegions();
   }, [role]);
+
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>
@@ -144,7 +165,7 @@ export function UserTable({
             ? form.profesi
             : null,
         instansi: form.instansi,
-        wilayahKerja: form.wilayahKerja,
+        regionIds: selectedRegionIds,
       };
 
       const url = editingUser
@@ -189,7 +210,6 @@ export function UserTable({
         password: "",
         profesi: "",
         instansi: "",
-        wilayahKerja: "",
       });
 
       await fetchUsers();
@@ -212,7 +232,6 @@ export function UserTable({
       password: "",
       profesi: user.profesi ?? "",
       instansi: user.instansi ?? "",
-      wilayahKerja: user.wilayahKerja ?? "",
     });
 
     setIsModalOpen(true);
@@ -261,6 +280,7 @@ export function UserTable({
 
   const handleAdd = () => {
     setEditingUser(null);
+    setSelectedRegionIds([]);
 
     setForm({
       name: "",
@@ -269,7 +289,6 @@ export function UserTable({
       password: "",
       profesi: "",
       instansi: "",
-      wilayahKerja: "",
     });
 
     setIsModalOpen(true);
@@ -347,26 +366,6 @@ export function UserTable({
 
             <tbody className="divide-y divide-border">
 
-              {isLoading ? (
-                <tr>
-                  <td
-                    colSpan={role === "NAKES" ? 8 : 7}
-                    className="px-4 py-8 text-center text-sm text-muted-foreground"
-                  >
-                    Memuat data...
-                  </td>
-                </tr>
-              ) : (
-                users.map((user, index) => (
-                  <tr
-                    key={user.id}
-                    className="text-sm text-foreground even:bg-muted/40"
-                  >
-                    {/* isi tabel lu */}
-                  </tr>
-                ))
-              )}
-
               {users.map((user, index) => (
                 <tr
                   key={user.id}
@@ -397,10 +396,6 @@ export function UserTable({
 
                   <td className="px-4 py-3">
                     {user.instansi ?? "-"}
-                  </td>
-
-                  <td className="px-4 py-3">
-                    {user.wilayahKerja ?? "-"}
                   </td>
 
                   <td className="px-4 py-3">
@@ -630,24 +625,51 @@ export function UserTable({
                 />
               </div>
 
-              {/* Wilayah */}
+              {/* Wilayah Kerja */}
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium">
                   Wilayah Kerja
                 </label>
 
-                <input
-                  type="text"
-                  value={form.wilayahKerja}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      wilayahKerja: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder="Contoh: Samarinda"
-                />
+                <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
+                  {regions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Belum ada data wilayah.
+                    </p>
+                  ) : (
+                    regions.map((region) => (
+                      <label
+                        key={region.id}
+                        className="flex cursor-pointer items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedRegionIds.includes(region.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedRegionIds((prev) => [
+                                ...prev,
+                                region.id,
+                              ]);
+                            } else {
+                              setSelectedRegionIds((prev) =>
+                                prev.filter((id) => id !== region.id)
+                              );
+                            }
+                          }}
+                        />
+
+                        <span>
+                          {region.name} - {region.city}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pilih satu atau lebih wilayah.
+                </p>
               </div>
 
               {/* Buttons */}
