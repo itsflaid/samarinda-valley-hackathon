@@ -52,6 +52,11 @@ const sidebarData = {
         url: "/admin/petugas",
         icon: HiOutlineShieldCheck,
       },
+      {
+        name: "Fasilitas",
+        url: "/admin/facility",
+        icon: HiOutlineShieldCheck,
+      },
     ],
   },
 
