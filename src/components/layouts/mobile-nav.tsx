@@ -13,6 +13,7 @@ import {
 import { Droplets, LogIn, MenuIcon } from "lucide-react";
 
 const links = [
+    { href: "/", label: "Home" },
     { href: "/wilayah", label: "Wilayah" },
     { href: "/fasilitas", label: "Fasilitas" },
     { href: "/lapor", label: "Lapor" },

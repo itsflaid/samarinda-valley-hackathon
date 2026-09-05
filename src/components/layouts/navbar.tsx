@@ -12,6 +12,7 @@ import { Droplets, LogIn } from "lucide-react";
 import { MobileNav } from "@/components/layouts/mobile-nav";
 
 const navLinks = [
+    { href: "/", label: "Home" },
     { href: "/wilayah", label: "Wilayah" },
     { href: "/fasilitas", label: "Fasilitas" },
     { href: "/lapor", label: "Lapor" },
@@ -46,13 +47,15 @@ export function Navbar() {
                 </NavigationMenu>
 
                 <div className="hidden items-center gap-2 md:flex">
-                    <Button
-                        variant="outline"
-                        className="border-secondary text-secondary-foreground hover:bg-secondary hover:text-white"
-                    >
-                        <LogIn className="size-4" />
-                        Masuk
-                    </Button>
+                    <Link href="/login">
+                        <Button
+                            variant="outline"
+                            className="border-secondary text-secondary-foreground hover:bg-secondary hover:text-white"
+                        >
+                            <LogIn className="size-4" />
+                            Masuk
+                        </Button>
+                    </Link>
                 </div>
 
                 <div className="md:hidden">
