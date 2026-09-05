@@ -8,6 +8,7 @@ datasource db {
 }
 
 model User {
+<<<<<<< HEAD
   id                String             @id @default(cuid())
   name              String
   email             String             @unique
@@ -21,6 +22,139 @@ model User {
   healthAssessments HealthAssessment[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+=======
+  id               String             @id @default(cuid())
+  name             String
+  email            String             @unique
+  nohp             String             @unique
+  password         String
+  role             Role
+  profesi          Profesi?
+  instansi         String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  facilities       FacilityStaff[]
+  HealthAssessment HealthAssessment[]
+  regions          UserRegion[]
+}
+
+model Region {
+  id               String             @id @default(cuid())
+  name             String
+  city             String
+  province         String
+  latitude         Decimal
+  longitude        Decimal
+  status           RegionStatus       @default(AMAN)
+  ipaStatus        IPAStatus
+  ipaCondition     String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  facilities       Facility[]
+  HealthAssessment HealthAssessment[]
+  healthReports    HealthReport[]
+  users            UserRegion[]
+  waterReports     WaterReport[]
+
+  @@index([city])
+  @@index([province])
+}
+
+model UserRegion {
+  id        String   @id @default(cuid())
+  userId    String
+  regionId  String
+  createdAt DateTime @default(now())
+  region    Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, regionId])
+  @@index([userId])
+  @@index([regionId])
+}
+
+model HealthReport {
+  id               String             @id @default(cuid())
+  reporterName     String
+  reporterPhone    String
+  regionId         String
+  diarrhea         Boolean            @default(false)
+  vomiting         Boolean            @default(false)
+  fever            Boolean            @default(false)
+  dehydration      Boolean            @default(false)
+  latitude         Float
+  longitude        Float
+  reportedAt       DateTime           @default(now())
+  HealthAssessment HealthAssessment[]
+  region           Region             @relation(fields: [regionId], references: [id])
+}
+
+model WaterReport {
+  id               String   @id @default(cuid())
+  reporterName     String
+  reporterPhone    String
+  regionId         String
+  supplyDisruption Boolean  @default(false)
+  dirtyOrSmelly    Boolean  @default(false)
+  saltyOrBrackish  Boolean  @default(false)
+  dryWell          Boolean  @default(false)
+  latitude         Float
+  longitude        Float
+  reportedAt       DateTime @default(now())
+  region           Region   @relation(fields: [regionId], references: [id])
+}
+
+model Facility {
+  id           String          @id @default(cuid())
+  name         String
+  type         FacilityType
+  address      String
+  regionId     String
+  latitude     Float
+  longitude    Float
+  phone        String?
+  openingHours String?
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  region       Region          @relation(fields: [regionId], references: [id])
+  staffs       FacilityStaff[]
+
+  @@index([regionId])
+  @@index([type])
+}
+
+model FacilityStaff {
+  id         String   @id @default(cuid())
+  userId     String
+  facilityId String
+  createdAt  DateTime @default(now())
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, facilityId])
+  @@index([userId])
+  @@index([facilityId])
+}
+
+model HealthAssessment {
+  id             String        @id
+  healthReportId String?
+  nakesId        String
+  regionId       String
+  riskLevel      RiskLevel
+  notes          String?
+  actionTaken    String?
+  assessedAt     DateTime      @default(now())
+  HealthReport   HealthReport? @relation(fields: [healthReportId], references: [id])
+  User           User          @relation(fields: [nakesId], references: [id], onDelete: Cascade)
+  Region         Region        @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@index([healthReportId])
+  @@index([nakesId])
+  @@index([regionId])
+  @@index([riskLevel])
+>>>>>>> 334f6f186167aa34294285d00751522e37bab653
 }
 
 enum Role {
@@ -46,6 +180,7 @@ enum RegionStatus {
   SIAGA
 }
 
+<<<<<<< HEAD
 model Region {
   id                String             @id @default(cuid())
   name              String
@@ -144,47 +279,16 @@ model WaterReport {
   reportedAt       DateTime @default(now())
 }
 
+=======
+>>>>>>> 334f6f186167aa34294285d00751522e37bab653
 enum FacilityType {
   PUSKESMAS
   RUMAH_SAKIT
   KLINIK
 }
 
-model Facility {
-  id       String       @id @default(cuid())
-  name     String
-  type     FacilityType
-  address  String
-  regionId String
-  region   Region       @relation(fields: [regionId], references: [id])
-
-  latitude  Float
-  longitude Float
-
-  phone        String?
-  openingHours String?
-  isActive     Boolean         @default(true)
-  staffs       FacilityStaff[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([regionId])
-  @@index([type])
-}
-
-model FacilityStaff {
-  id String @id @default(cuid())
-
-  userId     String
-  facilityId String
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@unique([userId, facilityId])
-  @@index([userId])
-  @@index([facilityId])
+enum RiskLevel {
+  RENDAH
+  SEDANG
+  TINGGI
 }

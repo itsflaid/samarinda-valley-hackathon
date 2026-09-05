@@ -1,26 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json(
-        { message: "Forbidden" },
-        { status: 403 }
-      );
-    }
-
     const facilities = await prisma.facility.findMany({
       include: {
         region: {
@@ -63,6 +48,7 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
+    // Hanya user yang sudah login
     if (!session?.user?.id) {
       return NextResponse.json(
         { message: "Unauthorized" },
@@ -70,6 +56,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Hanya ADMIN yang boleh menambahkan fasilitas
     if (session.user.role !== "ADMIN") {
       return NextResponse.json(
         { message: "Forbidden" },
@@ -90,6 +77,7 @@ export async function POST(request: Request) {
       openingHours,
     } = body;
 
+    // Validasi data wajib
     if (
       !name ||
       !type ||
@@ -104,6 +92,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Pastikan region tersedia
     const region = await prisma.region.findUnique({
       where: {
         id: regionId,
@@ -117,6 +106,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Buat fasilitas
     const facility = await prisma.facility.create({
       data: {
         name,

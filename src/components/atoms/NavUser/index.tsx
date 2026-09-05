@@ -82,17 +82,20 @@ export function NavUser({
                     <DropdownMenu>
 
                         {/* TRIGGER */}
-                        <DropdownMenuTrigger asChild>
-                            <div
-                                className="
-                                    flex w-full items-center gap-2
-                                    overflow-hidden rounded-md
-                                    px-2 py-2
-                                    cursor-pointer
-                                    hover:bg-sidebar-accent
-                                    hover:text-sidebar-accent-foreground
-                                "
-                            >
+                        <DropdownMenuTrigger
+                            render={
+                                <div
+                                    className="
+                                        flex w-full items-center gap-2
+                                        overflow-hidden rounded-md
+                                        px-2 py-2
+                                        cursor-pointer
+                                        hover:bg-sidebar-accent
+                                        hover:text-sidebar-accent-foreground
+                                    "
+                                />
+                            }
+                        >
                                 <Avatar className="h-8 w-8 rounded-lg">
                                     <AvatarImage
                                         src={avatarSrc}
@@ -114,7 +117,6 @@ export function NavUser({
                                 </div>
 
                                 <ChevronsUpDown className="ml-auto size-4" />
-                            </div>
                         </DropdownMenuTrigger>
 
 

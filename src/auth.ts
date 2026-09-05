@@ -43,7 +43,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     role: user.role,
                     profesi: user.profesi,
                     instansi: user.instansi,
-                    wilayahKerja: user.wilayahKerja,
                 };
             },
         }),
@@ -63,7 +62,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.role = user.role
             token.profesi = user.profesi
             token.instansi = user.instansi
-            token.wilayahKerja = user.wilayahKerja
         }
 
         return token
@@ -78,7 +76,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             session.user.role = token.role as "ADMIN" | "NAKES" | "PETUGAS"
             session.user.profesi = token.profesi as any
             session.user.instansi = token.instansi as string | null
-            session.user.wilayahKerja = token.wilayahKerja as string | null
         }
 
         return session

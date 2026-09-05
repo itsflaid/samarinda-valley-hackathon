@@ -79,7 +79,6 @@ export function NavMain({ items }: { items: NavItem[] }) {
           return (
             <Collapsible
               key={item.title}
-              asChild
               open={isOpen}
               onOpenChange={(value) => {
                 setOpenItems((prev) => ({
@@ -87,6 +86,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   [item.title]: value,
                 }))
               }}
+              render={<SidebarMenuItem />}
             >
               <SidebarMenuItem>
                                     <Link href={item.url}>
@@ -126,11 +126,9 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
                 {hasChildren ? (
                   <>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuAction className="data-[state=open]:rotate-90">
-                        <ChevronRight />
-                        <span className="sr-only">Toggle</span>
-                      </SidebarMenuAction>
+                    <CollapsibleTrigger render={<SidebarMenuAction className="data-[state=open]:rotate-90" />}>
+                      <ChevronRight />
+                      <span className="sr-only">Toggle</span>
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>

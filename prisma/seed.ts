@@ -26,7 +26,6 @@ async function main() {
             password: hashedPassword,
             role: Role.ADMIN,
             instansi: "SIAGA",
-            wilayahKerja: null,
         },
     });
 

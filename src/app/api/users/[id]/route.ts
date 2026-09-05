@@ -61,8 +61,11 @@ export async function PUT(
       role,
       profesi,
       instansi,
+<<<<<<< HEAD
       regionIds,
       facilityIds,
+=======
+>>>>>>> 334f6f186167aa34294285d00751522e37bab653
     } = body;
 
     // =====================================================
