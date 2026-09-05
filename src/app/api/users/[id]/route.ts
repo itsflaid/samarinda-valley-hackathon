@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 type Params = {
   params: Promise<{
@@ -8,14 +10,45 @@ type Params = {
   }>;
 };
 
-// =========================
+const allowedRoles = ["NAKES", "PETUGAS"] as const;
+type AllowedRole = (typeof allowedRoles)[number];
+
+const allowedProfesi = ["DOKTER", "PERAWAT", "BIDAN"] as const;
+type AllowedProfesi = (typeof allowedProfesi)[number];
+
+// =========================================================
 // EDIT USER
-// =========================
+// =========================================================
+
 export async function PUT(
   request: Request,
   { params }: Params
 ) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          message: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        {
+          message: "Forbidden",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
     const { id } = await params;
 
     const body = await request.json();
@@ -28,8 +61,13 @@ export async function PUT(
       role,
       profesi,
       instansi,
-      wilayahKerja,
+      regionIds,
+      facilityIds,
     } = body;
+
+    // =====================================================
+    // VALIDASI DATA WAJIB
+    // =====================================================
 
     if (!name || !email || !nohp || !role) {
       return NextResponse.json(
@@ -40,7 +78,11 @@ export async function PUT(
       );
     }
 
-    if (role !== "NAKES" && role !== "PETUGAS") {
+    // =====================================================
+    // VALIDASI ROLE
+    // =====================================================
+
+    if (!allowedRoles.includes(role as AllowedRole)) {
       return NextResponse.json(
         {
           message: "Role tidak valid",
@@ -49,16 +91,65 @@ export async function PUT(
       );
     }
 
-    if (role === "NAKES" && !profesi) {
-      return NextResponse.json(
-        {
-          message: "Profesi wajib diisi untuk Nakes",
-        },
-        { status: 400 }
-      );
+    // =====================================================
+    // VALIDASI PROFESI
+    // =====================================================
+
+    if (role === "NAKES") {
+      if (!profesi) {
+        return NextResponse.json(
+          {
+            message: "Profesi wajib diisi untuk Nakes",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!allowedProfesi.includes(profesi as AllowedProfesi)) {
+        return NextResponse.json(
+          {
+            message: "Profesi tidak valid",
+          },
+          { status: 400 }
+        );
+      }
     }
 
-    // Cek user
+    // =====================================================
+    // VALIDASI ASSIGNMENT
+    // =====================================================
+
+    if (role === "PETUGAS") {
+      if (!Array.isArray(regionIds) || regionIds.length === 0) {
+        return NextResponse.json(
+          {
+            message:
+              "Minimal satu wilayah harus dipilih untuk Petugas",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (role === "NAKES") {
+      if (
+        !Array.isArray(facilityIds) ||
+        facilityIds.length === 0
+      ) {
+        return NextResponse.json(
+          {
+            message:
+              "Minimal satu fasilitas harus dipilih untuk Nakes",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // =====================================================
+    // CEK USER
+    // =====================================================
+
     const existingUser = await prisma.user.findUnique({
       where: {
         id,
@@ -74,7 +165,10 @@ export async function PUT(
       );
     }
 
-    // Cek email milik user lain
+    // =====================================================
+    // CEK EMAIL
+    // =====================================================
+
     const emailUsed = await prisma.user.findFirst({
       where: {
         email,
@@ -93,7 +187,10 @@ export async function PUT(
       );
     }
 
-    // Cek no HP milik user lain
+    // =====================================================
+    // CEK NO HP
+    // =====================================================
+
     const nohpUsed = await prisma.user.findFirst({
       where: {
         nohp,
@@ -112,7 +209,10 @@ export async function PUT(
       );
     }
 
-    // Data yang akan diupdate
+    // =====================================================
+    // PREPARE UPDATE DATA
+    // =====================================================
+
     const updateData: {
       name: string;
       email: string;
@@ -120,7 +220,6 @@ export async function PUT(
       role: "NAKES" | "PETUGAS";
       profesi: "DOKTER" | "PERAWAT" | "BIDAN" | null;
       instansi: string | null;
-      wilayahKerja: string | null;
       password?: string;
     } = {
       name,
@@ -129,26 +228,101 @@ export async function PUT(
       role,
       profesi: role === "NAKES" ? profesi : null,
       instansi: instansi || null,
-      wilayahKerja: wilayahKerja || null,
     };
 
-    // Password hanya diubah kalau diisi
-    if (password && password.trim() !== "") {
+    // =====================================================
+    // PASSWORD
+    // =====================================================
+
+    if (
+      password &&
+      typeof password === "string" &&
+      password.trim() !== ""
+    ) {
       updateData.password = await bcrypt.hash(
         password,
         10
       );
     }
 
-    const user = await prisma.user.update({
-      where: {
-        id,
-      },
-      data: updateData,
+    // =====================================================
+    // TRANSACTION
+    // =====================================================
+
+    const user = await prisma.$transaction(async (tx) => {
+      // ---------------------------------------------------
+      // UPDATE USER
+      // ---------------------------------------------------
+
+      const updatedUser = await tx.user.update({
+        where: {
+          id,
+        },
+        data: updateData,
+      });
+
+      // ---------------------------------------------------
+      // HAPUS ASSIGNMENT LAMA
+      // ---------------------------------------------------
+
+      await tx.userRegion.deleteMany({
+        where: {
+          userId: id,
+        },
+      });
+
+      await tx.facilityStaff.deleteMany({
+        where: {
+          userId: id,
+        },
+      });
+
+      // ---------------------------------------------------
+      // PETUGAS → ASSIGN REGION
+      // ---------------------------------------------------
+
+      if (
+        role === "PETUGAS" &&
+        Array.isArray(regionIds) &&
+        regionIds.length > 0
+      ) {
+        await tx.userRegion.createMany({
+          data: regionIds.map((regionId: string) => ({
+            userId: id,
+            regionId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      // ---------------------------------------------------
+      // NAKES → ASSIGN FACILITY
+      // ---------------------------------------------------
+
+      if (
+        role === "NAKES" &&
+        Array.isArray(facilityIds) &&
+        facilityIds.length > 0
+      ) {
+        await tx.facilityStaff.createMany({
+          data: facilityIds.map((facilityId: string) => ({
+            userId: id,
+            facilityId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return updatedUser;
     });
+
+    // =====================================================
+    // RESPONSE
+    // =====================================================
 
     return NextResponse.json({
       message: "User berhasil diperbarui",
+
       user: {
         id: user.id,
         name: user.name,
@@ -157,7 +331,6 @@ export async function PUT(
         role: user.role,
         profesi: user.profesi,
         instansi: user.instansi,
-        wilayahKerja: user.wilayahKerja,
       },
     });
   } catch (error) {
@@ -172,15 +345,44 @@ export async function PUT(
   }
 }
 
-// =========================
+// =========================================================
 // HAPUS USER
-// =========================
+// =========================================================
+
 export async function DELETE(
   request: Request,
   { params }: Params
 ) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          message: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        {
+          message: "Forbidden",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
     const { id } = await params;
+
+    // =====================================================
+    // CEK USER
+    // =====================================================
 
     const existingUser = await prisma.user.findUnique({
       where: {
@@ -196,6 +398,10 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    // =====================================================
+    // DELETE
+    // =====================================================
 
     await prisma.user.delete({
       where: {

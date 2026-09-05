@@ -29,7 +29,6 @@ export async function GET(
                     orderBy: {
                         reportedAt: "desc",
                     },
-                    take: 20,
                     select: {
                         id: true,
                         diarrhea: true,
@@ -43,7 +42,6 @@ export async function GET(
                     orderBy: {
                         reportedAt: "desc",
                     },
-                    take: 20,
                     select: {
                         id: true,
                         supplyDisruption: true,

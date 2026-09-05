@@ -8,7 +8,8 @@ import {
     NavigationMenuList,
     navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import { Droplets, LogIn } from "lucide-react";
+import { LogIn } from "lucide-react";
+import Image from "next/image";
 import { MobileNav } from "@/components/layouts/mobile-nav";
 
 const navLinks = [
@@ -23,7 +24,7 @@ export function Navbar() {
         <nav className="sticky top-0 z-50 border-b border-border bg-white/80 backdrop-blur-md">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
                 <Link href="/" className="flex items-center gap-2 font-bold text-primary">
-                    <Droplets className="h-6 w-6" />
+                    <Image src="/images/logos.webp" alt="SANITAIR" width={32} height={32} className="h-8 w-auto" />
                     <span className="text-lg tracking-tight">SANITAIR</span>
                 </Link>
 

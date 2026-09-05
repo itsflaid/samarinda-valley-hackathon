@@ -8,18 +8,19 @@ datasource db {
 }
 
 model User {
-  id         String          @id @default(cuid())
-  name       String
-  email      String          @unique
-  nohp       String          @unique
-  password   String
-  role       Role
-  profesi    Profesi?
-  instansi   String?
-  regions    UserRegion[]
-  facilities FacilityStaff[]
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  nohp              String             @unique
+  password          String
+  role              Role
+  profesi           Profesi?
+  instansi          String?
+  regions           UserRegion[]
+  facilities        FacilityStaff[]
+  healthAssessments HealthAssessment[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 enum Role {
@@ -46,21 +47,22 @@ enum RegionStatus {
 }
 
 model Region {
-  id            String         @id @default(cuid())
-  name          String
-  city          String
-  province      String
-  latitude      Decimal
-  longitude     Decimal
-  status        RegionStatus   @default(AMAN)
-  ipaStatus     IPAStatus
-  ipaCondition  String?
-  users         UserRegion[]
-  healthReports HealthReport[]
-  waterReports  WaterReport[]
-  facilities    Facility[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                String             @id @default(cuid())
+  name              String
+  city              String
+  province          String
+  latitude          Decimal
+  longitude         Decimal
+  status            RegionStatus       @default(AMAN)
+  ipaStatus         IPAStatus
+  ipaCondition      String?
+  users             UserRegion[]
+  healthReports     HealthReport[]
+  waterReports      WaterReport[]
+  healthAssessments HealthAssessment[]
+  facilities        Facility[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([city])
   @@index([province])
@@ -82,18 +84,49 @@ model UserRegion {
 }
 
 model HealthReport {
-  id            String   @id @default(cuid())
+  id            String             @id @default(cuid())
   reporterName  String
   reporterPhone String
   regionId      String
-  region        Region   @relation(fields: [regionId], references: [id])
-  diarrhea      Boolean  @default(false)
-  vomiting      Boolean  @default(false)
-  fever         Boolean  @default(false)
-  dehydration   Boolean  @default(false)
+  region        Region             @relation(fields: [regionId], references: [id])
+  diarrhea      Boolean            @default(false)
+  vomiting      Boolean            @default(false)
+  fever         Boolean            @default(false)
+  dehydration   Boolean            @default(false)
   latitude      Float
   longitude     Float
-  reportedAt    DateTime @default(now())
+  reportedAt    DateTime           @default(now())
+  assessments   HealthAssessment[]
+}
+
+enum RiskLevel {
+  RENDAH
+  SEDANG
+  TINGGI
+}
+
+model HealthAssessment {
+  id String @id @default(cuid())
+
+  healthReportId String?
+  healthReport   HealthReport? @relation(fields: [healthReportId], references: [id], onDelete: SetNull)
+
+  nakesId String
+  nakes   User   @relation(fields: [nakesId], references: [id], onDelete: Cascade)
+
+  regionId String
+  region   Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  riskLevel   RiskLevel
+  notes       String?
+  actionTaken String?
+
+  assessedAt DateTime @default(now())
+
+  @@unique([healthReportId])
+  @@index([nakesId])
+  @@index([regionId])
+  @@index([riskLevel])
 }
 
 model WaterReport {

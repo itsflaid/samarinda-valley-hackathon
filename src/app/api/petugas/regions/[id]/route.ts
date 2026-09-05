@@ -3,107 +3,175 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const allowedStatus = ["AMAN", "WASPADA", "SIAGA"];
+type Params = {
+  params: Promise<{
+    id: string;
+  }>;
+};
 
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions);
+const allowedStatus = [
+  "AMAN",
+  "WASPADA",
+  "SIAGA",
+] as const;
 
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    if (session.user.role !== "PETUGAS") {
-      return NextResponse.json(
-        { message: "Forbidden" },
-        { status: 403 }
-      );
-    }
-
-    const userRegions = await prisma.userRegion.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      include: {
-        region: true,
-      },
-    });
-
-    return NextResponse.json(
-      userRegions.map((item) => item.region)
-    );
-  } catch (error) {
-    console.error("GET /api/petugas/regions error:", error);
-
-    return NextResponse.json(
-      { message: "Gagal mengambil wilayah petugas" },
-      { status: 500 }
-    );
-  }
-}
+const allowedIpaStatus = [
+  "AKTIF",
+  "MATI",
+] as const;
 
 export async function PUT(
-  req: Request,
-  context: { params: Promise<{ id: string }> }
+  request: Request,
+  { params }: Params
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    // ==========================================
+    // 1. SESSION
+    // ==========================================
+
+    const session =
+      await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json(
-        { message: "Unauthorized" },
+        {
+          message: "Unauthorized",
+        },
         { status: 401 }
       );
     }
 
+    // ==========================================
+    // 2. ROLE
+    // ==========================================
+
     if (session.user.role !== "PETUGAS") {
       return NextResponse.json(
-        { message: "Forbidden" },
+        {
+          message: "Forbidden",
+        },
         { status: 403 }
       );
     }
 
-    const { id } = await context.params;
-    const body = await req.json();
+    // ==========================================
+    // 3. PARAM ID
+    // ==========================================
 
-    // Cek status
-    if (!allowedStatus.includes(body.status)) {
+    const { id } = await params;
+
+    // ==========================================
+    // 4. CEK APAKAH REGION MILIK PETUGAS
+    // ==========================================
+
+    const userRegion =
+      await prisma.userRegion.findFirst({
+        where: {
+          userId: session.user.id,
+          regionId: id,
+        },
+      });
+
+    if (!userRegion) {
       return NextResponse.json(
-        { message: "Status tidak valid" },
+        {
+          message:
+            "Wilayah bukan bagian dari tugas Anda",
+        },
+        { status: 403 }
+      );
+    }
+
+    // ==========================================
+    // 5. BODY
+    // ==========================================
+
+    const body = await request.json();
+
+    const {
+      status,
+      ipaStatus,
+      ipaCondition,
+    } = body;
+
+    // ==========================================
+    // 6. VALIDASI STATUS
+    // ==========================================
+
+    if (
+      !allowedStatus.includes(
+        status
+      )
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Status wilayah tidak valid",
+        },
         { status: 400 }
       );
     }
 
-    // Cek apakah wilayah memang ditugaskan ke Petugas
-    const assignment = await prisma.userRegion.findFirst({
-      where: {
-        userId: session.user.id,
-        regionId: id,
-      },
-    });
-
-    if (!assignment) {
+    if (
+      !allowedIpaStatus.includes(
+        ipaStatus
+      )
+    ) {
       return NextResponse.json(
-        { message: "Wilayah bukan tanggung jawab Anda" },
-        { status: 403 }
+        {
+          message:
+            "Status IPA tidak valid",
+        },
+        { status: 400 }
       );
     }
 
-    // Update status Region
-    const region = await prisma.region.update({
-      where: {
-        id: id,
-      },
-      data: {
-        status: body.status,
-      },
+    if (
+      !ipaCondition ||
+      !ipaCondition.trim()
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Kondisi air wajib diisi",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ==========================================
+    // 7. UPDATE REGION
+    // ==========================================
+
+    const region =
+      await prisma.region.update({
+        where: {
+          id,
+        },
+
+        data: {
+          status,
+          ipaStatus,
+          ipaCondition:
+            ipaCondition.trim(),
+        },
+
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          province: true,
+          status: true,
+          ipaStatus: true,
+          ipaCondition: true,
+        },
+      });
+
+    return NextResponse.json({
+      message:
+        "Kondisi air berhasil diperbarui",
+      region,
     });
-
-    return NextResponse.json(region);
-
   } catch (error) {
     console.error(
       "PUT /api/petugas/regions/[id] ERROR:",
@@ -111,7 +179,10 @@ export async function PUT(
     );
 
     return NextResponse.json(
-      { message: "Gagal mengubah status wilayah" },
+      {
+        message:
+          "Gagal memperbarui kondisi air",
+      },
       { status: 500 }
     );
   }

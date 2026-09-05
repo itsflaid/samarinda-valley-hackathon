@@ -4,16 +4,7 @@ import { useEffect, useState } from "react";
 import { Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  nohp: string;
-  role: "NAKES" | "PETUGAS";
-  profesi?: "DOKTER" | "PERAWAT" | "BIDAN";
-  instansi?: string;
-  regions?: Region[];
-};
+type Role = "NAKES" | "PETUGAS";
 
 type Region = {
   id: string;
@@ -21,77 +12,52 @@ type Region = {
   city: string;
 };
 
-const users: User[] = [
-  {
-    id: "1",
-    name: "Budi Santoso",
-    email: "budi@gmail.com",
-    nohp: "081234567890",
-    role: "NAKES",
-    profesi: "DOKTER",
-    instansi: "Puskesmas Palaran",
-  },
-  {
-    id: "2",
-    name: "Siti Aminah",
-    email: "siti@gmail.com",
-    nohp: "081234567891",
-    role: "NAKES",
-    profesi: "PERAWAT",
-    instansi: "Puskesmas Samarinda",
-  },
-  {
-    id: "3",
-    name: "Andi Saputra",
-    email: "andi@gmail.com",
-    nohp: "081234567892",
-    role: "PETUGAS",
-    instansi: "Puskesmas Palaran",
-  },
-  {
-    id: "4",
-    name: "Dewi Lestari",
-    email: "dewi@gmail.com",
-    nohp: "081234567893",
-    role: "PETUGAS",
-    instansi: "Puskesmas Sungai Kunjang",
-  },
-];
-
-const formatRole = (role: User["role"]) => {
-  if (role === "NAKES") return "Nakes";
-  return "Petugas";
+type Facility = {
+  id: string;
+  name: string;
+  type: "PUSKESMAS" | "RUMAH_SAKIT" | "KLINIK";
+  region?: {
+    id: string;
+    name: string;
+    city: string;
+  };
 };
 
-const formatProfesi = (profesi?: User["profesi"]) => {
-  if (!profesi) return "-";
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  nohp: string;
+  role: Role;
+  profesi?: "DOKTER" | "PERAWAT" | "BIDAN" | null;
+  instansi?: string | null;
 
-  return (
-    profesi.charAt(0) +
-    profesi.slice(1).toLowerCase()
-  );
+  regions?: Region[];
+  facilities?: Facility[];
+
+  createdAt?: string;
 };
 
-export function UserTable({
-  title,
-  subtitle,
-  role,
-}: {
-  title: string;
-  subtitle: string;
-  role: User["role"];
-}) {
+type UserTableProps = {
+  role: Role;
+};
+
+export default function UserTable({ role }: UserTableProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+
   const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
+  const [selectedFacilityIds, setSelectedFacilityIds] = useState<string[]>(
+    []
+  );
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingUser, setEditingUser] =
-    useState<User | null>(null);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
-  const [isDeleteLoading, setIsDeleteLoading] =
-    useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -102,27 +68,34 @@ export function UserTable({
     instansi: "",
   });
 
+  // =========================================================
+  // FETCH USERS
+  // =========================================================
+
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
 
-      const response = await fetch(
-        `/api/users?role=${role}`
-      );
+      const response = await fetch(`/api/users?role=${role}`);
 
       if (!response.ok) {
-        throw new Error("Gagal mengambil data");
+        throw new Error("Gagal mengambil data user");
       }
 
       const data = await response.json();
 
       setUsers(data);
     } catch (error) {
-      console.error(error);
+      console.error("FETCH USERS ERROR:", error);
+      toast.error("Gagal mengambil data user");
     } finally {
       setIsLoading(false);
     }
   };
+
+  // =========================================================
+  // FETCH REGIONS
+  // =========================================================
 
   const fetchRegions = async () => {
     try {
@@ -133,94 +106,125 @@ export function UserTable({
       }
 
       const data = await response.json();
+
       setRegions(data);
     } catch (error) {
-      console.error(error);
+      console.error("FETCH REGIONS ERROR:", error);
       toast.error("Gagal mengambil data wilayah");
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-    fetchRegions();
-  }, [role]);
+  // =========================================================
+  // FETCH FACILITIES
+  // =========================================================
 
-
-  const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
-    e.preventDefault();
-
+  const fetchFacilities = async () => {
     try {
-      setIsSubmitting(true);
-
-      const payload = {
-        name: form.name,
-        email: form.email,
-        nohp: form.nohp,
-        password: form.password,
-        role,
-        profesi:
-          role === "NAKES"
-            ? form.profesi
-            : null,
-        instansi: form.instansi,
-        regionIds: selectedRegionIds,
-      };
-
-      const url = editingUser
-        ? `/api/users/${editingUser.id}`
-        : "/api/users";
-
-      const method = editingUser
-        ? "PUT"
-        : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+      const response = await fetch("/api/facilities", {
+        method: "GET",
+        cache: "no-store",
       });
+
+      console.log("STATUS /api/facilities:", response.status);
 
       const data = await response.json();
 
+      console.log("DATA /api/facilities:", data);
+
       if (!response.ok) {
-        toast.error(
-          data.message ||
-          "Gagal menyimpan user"
+        throw new Error(
+          data?.message || "Gagal mengambil fasilitas"
         );
-        return;
       }
 
-      toast.success(
-        editingUser
-          ? "User berhasil diperbarui"
-          : "User berhasil ditambahkan"
-      );
+      // API kamu seharusnya mengembalikan array.
+      // Tapi kita buat aman kalau ternyata response berbentuk { facilities: [...] }
+      const facilityData = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.facilities)
+          ? data.facilities
+          : [];
 
-      setIsModalOpen(false);
-      setEditingUser(null);
+      console.log("FACILITY DATA:", facilityData);
 
-      setForm({
-        name: "",
-        email: "",
-        nohp: "",
-        password: "",
-        profesi: "",
-        instansi: "",
-      });
-
-      await fetchUsers();
+      setFacilities(facilityData);
     } catch (error) {
-      console.error(error);
+      console.error("FETCH FACILITIES ERROR:", error);
 
-      toast.error("Terjadi kesalahan");
-    } finally {
-      setIsSubmitting(false);
+      setFacilities([]);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal mengambil data fasilitas"
+      );
     }
   };
+
+  // =========================================================
+  // INITIAL FETCH
+  // =========================================================
+
+  useEffect(() => {
+  fetchUsers();
+
+  if (role === "NAKES") {
+    fetchFacilities();
+  } else {
+    fetchRegions();
+    setFacilities([]);
+  }
+}, [role]);
+
+  // =========================================================
+  // HANDLE FORM CHANGE
+  // =========================================================
+
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // =========================================================
+  // RESET FORM
+  // =========================================================
+
+  const resetForm = () => {
+    setForm({
+      name: "",
+      email: "",
+      nohp: "",
+      password: "",
+      profesi: "",
+      instansi: "",
+    });
+
+    setSelectedRegionIds([]);
+    setSelectedFacilityIds([]);
+
+    setEditingUser(null);
+  };
+
+  // =========================================================
+  // OPEN ADD MODAL
+  // =========================================================
+
+  const handleAdd = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
+
+  // =========================================================
+  // OPEN EDIT MODAL
+  // =========================================================
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
@@ -234,455 +238,744 @@ export function UserTable({
       instansi: user.instansi ?? "",
     });
 
+    // Assignment PETUGAS
+    setSelectedRegionIds(
+      user.regions?.map((region) => region.id) ?? []
+    );
+
+    // Assignment NAKES
+    setSelectedFacilityIds(
+      user.facilities?.map((facility) => facility.id) ?? []
+    );
+
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (user: User) => {
-    const confirmed = window.confirm(
-      `Apakah kamu yakin ingin menghapus ${user.name}?`
-    );
+  // =========================================================
+  // CLOSE MODAL
+  // =========================================================
 
-    if (!confirmed) {
+  const handleCloseModal = () => {
+    if (isSubmitting) return;
+
+    setIsModalOpen(false);
+    resetForm();
+  };
+
+  // =========================================================
+  // SUBMIT FORM
+  // =========================================================
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // Validasi umum
+    if (!form.name || !form.email || !form.nohp) {
+      toast.error("Lengkapi data user terlebih dahulu");
+      return;
+    }
+
+    // Password wajib saat tambah user
+    if (!editingUser && !form.password) {
+      toast.error("Password wajib diisi");
+      return;
+    }
+
+    // Validasi Nakes
+    if (role === "NAKES" && !form.profesi) {
+      toast.error("Profesi wajib diisi untuk Nakes");
+      return;
+    }
+
+    // Validasi assignment
+    if (role === "NAKES" && selectedFacilityIds.length === 0) {
+      toast.error("Pilih minimal satu fasilitas kesehatan");
+      return;
+    }
+
+    if (role === "PETUGAS" && selectedRegionIds.length === 0) {
+      toast.error("Pilih minimal satu wilayah kerja");
       return;
     }
 
     try {
-      setIsDeleteLoading(true);
+      setIsSubmitting(true);
 
-      const response = await fetch(
-        `/api/users/${user.id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const payload = {
+        name: form.name,
+        email: form.email,
+        nohp: form.nohp,
+        password: form.password,
+        role,
+        profesi: role === "NAKES" ? form.profesi : null,
+        instansi: form.instansi || null,
+
+        ...(role === "NAKES"
+          ? {
+            facilityIds: selectedFacilityIds,
+          }
+          : {
+            regionIds: selectedRegionIds,
+          }),
+      };
+
+      const url = editingUser
+        ? `/api/users/${editingUser.id}`
+        : "/api/users";
+
+      const method = editingUser ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(
-          data.message ||
-          "Gagal menghapus user"
+        throw new Error(
+          data?.message || "Gagal menyimpan data user"
         );
-        return;
+      }
+
+      toast.success(
+        editingUser
+          ? "User berhasil diperbarui"
+          : "User berhasil ditambahkan"
+      );
+
+      setIsModalOpen(false);
+      resetForm();
+
+      await fetchUsers();
+    } catch (error) {
+      console.error("SUBMIT USER ERROR:", error);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // =========================================================
+  // DELETE USER
+  // =========================================================
+
+  const handleDelete = async (user: User) => {
+    const confirmed = window.confirm(
+      `Yakin ingin menghapus user "${user.name}"?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsDeleteLoading(true);
+
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message || "Gagal menghapus user"
+        );
       }
 
       toast.success("User berhasil dihapus");
 
       await fetchUsers();
     } catch (error) {
-      console.error(error);
+      console.error("DELETE USER ERROR:", error);
 
-      toast.error("Terjadi kesalahan");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal menghapus user"
+      );
     } finally {
       setIsDeleteLoading(false);
     }
   };
 
-  const handleAdd = () => {
-    setEditingUser(null);
-    setSelectedRegionIds([]);
+  // =========================================================
+  // FORMAT ROLE
+  // =========================================================
 
-    setForm({
-      name: "",
-      email: "",
-      nohp: "",
-      password: "",
-      profesi: "",
-      instansi: "",
-    });
+  const formatRole = (role: Role) => {
+    if (role === "NAKES") return "Nakes";
+    if (role === "PETUGAS") return "Petugas";
 
-    setIsModalOpen(true);
+    return role;
   };
 
+  // =========================================================
+  // FORMAT FACILITY TYPE
+  // =========================================================
+
+  const formatFacilityType = (type: Facility["type"]) => {
+    switch (type) {
+      case "PUSKESMAS":
+        return "Puskesmas";
+
+      case "RUMAH_SAKIT":
+        return "Rumah Sakit";
+
+      case "KLINIK":
+        return "Klinik";
+
+      default:
+        return type;
+    }
+  };
+
+  // =========================================================
+  // RENDER
+  // =========================================================
+
   return (
-    <div className="w-full space-y-4">
+    <>
+      <div className="space-y-6">
+        {/* ================================================= */}
+        {/* HEADER */}
+        {/* ================================================= */}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">
-            {title}
-          </h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">
+              Data {formatRole(role)}
+            </h2>
 
-          <p className="text-sm text-muted-foreground">
-            {subtitle}
-          </p>
+            <p className="text-sm text-muted-foreground">
+              Kelola akun dan penugasan {formatRole(role).toLowerCase()}.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+          >
+            + Tambah
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-        >
-          + Tambah
-        </button>
-      </div>
+        {/* ================================================= */}
+        {/* TABLE */}
+        {/* ================================================= */}
 
-      {/* Table */}
-      <section className="min-w-0 w-full">
-        <div className="overflow-x-auto rounded-xl border border-border bg-card">
-
-          <table className="min-w-full divide-y divide-border">
-
-            <thead>
-              <tr className="text-left text-sm font-medium text-muted-foreground">
-
-                <th className="px-4 py-3">
-                  No
-                </th>
-
-                <th className="px-4 py-3">
-                  Nama Lengkap
-                </th>
-
-                <th className="px-4 py-3">
-                  Email
-                </th>
-
-                <th className="px-4 py-3">
-                  No HP
-                </th>
-
-                {role === "NAKES" && (
-                  <th className="px-4 py-3">
-                    Profesi
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40">
+                  <th className="px-4 py-3 text-left font-semibold">
+                    No
                   </th>
-                )}
 
-                <th className="px-4 py-3">
-                  Instansi
-                </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Nama
+                  </th>
 
-                <th className="px-4 py-3">
-                  Wilayah Kerja
-                </th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Email
+                  </th>
 
-                <th className="px-4 py-3">
-                  Aksi
-                </th>
-
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-border">
-
-              {users.map((user, index) => (
-                <tr
-                  key={user.id}
-                  className="text-sm text-foreground even:bg-muted/40"
-                >
-
-                  <td className="px-4 py-3">
-                    {index + 1}
-                  </td>
-
-                  <td className="px-4 py-3 font-medium">
-                    {user.name}
-                  </td>
-
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {user.email}
-                  </td>
-
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {user.nohp}
-                  </td>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    No. HP
+                  </th>
 
                   {role === "NAKES" && (
-                    <td className="px-4 py-3">
-                      {formatProfesi(user.profesi)}
-                    </td>
+                    <th className="px-4 py-3 text-left font-semibold">
+                      Profesi
+                    </th>
                   )}
 
-                  <td className="px-4 py-3">
-                    {user.instansi ?? "-"}
-                  </td>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    {role === "NAKES"
+                      ? "Fasilitas Kerja"
+                      : "Wilayah Kerja"}
+                  </th>
 
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Instansi
+                  </th>
 
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(user)}
-                        className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                      >
-                        <Pencil className="size-3" />
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(user)}
-                        disabled={isDeleteLoading}
-                        className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        <Trash2 className="size-3" />
-                        Hapus
-                      </button>
-
-                    </div>
-                  </td>
-
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Aksi
+                  </th>
                 </tr>
-              ))}
+              </thead>
 
-              {users.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={role === "NAKES" ? 8 : 7}
-                    className="px-4 py-8 text-center text-sm text-muted-foreground"
-                  >
-                    Data tidak ditemukan.
-                  </td>
-                </tr>
-              )}
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td
+                      colSpan={role === "NAKES" ? 8 : 7}
+                      className="px-4 py-10 text-center text-muted-foreground"
+                    >
+                      Memuat data...
+                    </td>
+                  </tr>
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={role === "NAKES" ? 8 : 7}
+                      className="px-4 py-10 text-center text-muted-foreground"
+                    >
+                      Belum ada data {formatRole(role).toLowerCase()}.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((user, index) => (
+                    <tr
+                      key={user.id}
+                      className="border-b last:border-b-0"
+                    >
+                      {/* No */}
+                      <td className="px-4 py-4 align-top">
+                        {index + 1}
+                      </td>
 
-            </tbody>
+                      {/* Nama */}
+                      <td className="px-4 py-4 align-top">
+                        <div>
+                          <p className="font-medium">
+                            {user.name}
+                          </p>
 
-          </table>
+                          <p className="text-xs text-muted-foreground">
+                            {formatRole(user.role)}
+                          </p>
+                        </div>
+                      </td>
 
+                      {/* Email */}
+                      <td className="px-4 py-4 align-top">
+                        {user.email}
+                      </td>
+
+                      {/* No HP */}
+                      <td className="px-4 py-4 align-top">
+                        {user.nohp}
+                      </td>
+
+                      {/* Profesi Nakes */}
+                      {role === "NAKES" && (
+                        <td className="px-4 py-4 align-top">
+                          {user.profesi || "-"}
+                        </td>
+                      )}
+
+                      {/* Assignment */}
+                      <td className="px-4 py-4 align-top">
+                        {role === "NAKES" ? (
+                          user.facilities &&
+                            user.facilities.length > 0 ? (
+                            <div className="space-y-1">
+                              {user.facilities.map((facility) => (
+                                <div key={facility.id}>
+                                  <p className="font-medium">
+                                    {facility.name}
+                                  </p>
+
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatFacilityType(
+                                      facility.type
+                                    )}
+
+                                    {facility.region
+                                      ? ` • ${facility.region.name}`
+                                      : ""}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              Belum ditugaskan
+                            </span>
+                          )
+                        ) : user.regions &&
+                          user.regions.length > 0 ? (
+                          <div className="space-y-1">
+                            {user.regions.map((region) => (
+                              <div key={region.id}>
+                                <p className="font-medium">
+                                  {region.name}
+                                </p>
+
+                                <p className="text-xs text-muted-foreground">
+                                  {region.city}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            Belum ditugaskan
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Instansi */}
+                      <td className="px-4 py-4 align-top">
+                        {user.instansi || "-"}
+                      </td>
+
+                      {/* Aksi */}
+                      <td className="px-4 py-4 align-top">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(user)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border transition hover:bg-muted"
+                            title="Edit user"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(user)}
+                            disabled={isDeleteLoading}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            title="Hapus user"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </section>
+      </div>
+
+      {/* ===================================================== */}
+      {/* MODAL */}
+      {/* ===================================================== */}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-xl">
-
-            {/* Header Modal */}
-            <div className="mb-6 flex items-center justify-between">
+          <div className="w-full max-w-2xl rounded-xl bg-background shadow-xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b px-6 py-4">
               <div>
                 <h3 className="text-lg font-semibold">
-                  {editingUser ? "Edit" : "Tambah"}{" "}
-                  {role === "NAKES"
-                    ? "Nakes"
-                    : "Petugas"}
+                  {editingUser
+                    ? `Edit ${formatRole(role)}`
+                    : `Tambah ${formatRole(role)}`}
                 </h3>
 
                 <p className="text-sm text-muted-foreground">
-                  Masukkan data user baru
+                  Isi data akun dan penugasan.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setEditingUser(null);
-                }}
-                className="rounded-md p-2 hover:bg-muted"
+                onClick={handleCloseModal}
+                disabled={isSubmitting}
+                className="rounded-md p-2 transition hover:bg-muted disabled:opacity-50"
               >
-                <X className="size-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Form */}
+            {/* Modal Body */}
             <form
               onSubmit={handleSubmit}
-              className="space-y-4"
+              className="max-h-[75vh] overflow-y-auto"
             >
-
-              {/* Nama */}
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Nama Lengkap
-                </label>
-
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      name: e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2"
-                  placeholder="Contoh: Budi Santoso"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Email
-                </label>
-
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      email: e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2"
-                  placeholder="contoh@email.com"
-                />
-              </div>
-
-              {/* No HP */}
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  No HP
-                </label>
-
-                <input
-                  type="tel"
-                  value={form.nohp}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      nohp: e.target.value,
-                    })
-                  }
-                  required
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2"
-                  placeholder="081234567890"
-                />
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Password
-                </label>
-
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      password: e.target.value,
-                    })
-                  }
-                  minLength={6}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder={
-                    editingUser
-                      ? "Kosongkan jika tidak ingin mengubah password"
-                      : "Minimal 6 karakter"
-                  }
-                />
-              </div>
-
-              {/* Profesi */}
-              {role === "NAKES" && (
+              <div className="space-y-5 px-6 py-5">
+                {/* Nama */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Profesi
+                  <label className="mb-2 block text-sm font-medium">
+                    Nama Lengkap
                   </label>
 
-                  <select
-                    value={form.profesi}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        profesi: e.target.value,
-                      })
-                    }
+                  <input
+                    type="text"
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    placeholder="Masukkan nama lengkap"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                     required
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">
-                      Pilih profesi
-                    </option>
-
-                    <option value="DOKTER">
-                      Dokter
-                    </option>
-
-                    <option value="PERAWAT">
-                      Perawat
-                    </option>
-
-                    <option value="BIDAN">
-                      Bidan
-                    </option>
-                  </select>
+                  />
                 </div>
-              )}
 
-              {/* Instansi */}
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Instansi
-                </label>
+                {/* Email */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Email
+                  </label>
 
-                <input
-                  type="text"
-                  value={form.instansi}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      instansi: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder="Contoh: Puskesmas Palaran"
-                />
-              </div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="contoh@email.com"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                    required
+                  />
+                </div>
 
-              {/* Wilayah Kerja */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Wilayah Kerja
-                </label>
+                {/* No HP */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Nomor HP
+                  </label>
 
-                <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
-                  {regions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Belum ada data wilayah.
+                  <input
+                    type="text"
+                    name="nohp"
+                    value={form.nohp}
+                    onChange={handleChange}
+                    placeholder="08xxxxxxxxxx"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                    required
+                  />
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Password
+                    {editingUser && (
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                        (kosongkan jika tidak ingin mengubah)
+                      </span>
+                    )}
+                  </label>
+
+                  <input
+                    type="password"
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    placeholder={
+                      editingUser
+                        ? "Password baru"
+                        : "Masukkan password"
+                    }
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                    required={!editingUser}
+                  />
+                </div>
+
+                {/* Profesi Nakes */}
+                {role === "NAKES" && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Profesi
+                    </label>
+
+                    <select
+                      name="profesi"
+                      value={form.profesi}
+                      onChange={handleChange}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                    >
+                      <option value="">
+                        Pilih profesi
+                      </option>
+
+                      <option value="DOKTER">
+                        Dokter
+                      </option>
+
+                      <option value="PERAWAT">
+                        Perawat
+                      </option>
+
+                      <option value="BIDAN">
+                        Bidan
+                      </option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Instansi */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Instansi
+                  </label>
+
+                  <input
+                    type="text"
+                    name="instansi"
+                    value={form.instansi}
+                    onChange={handleChange}
+                    placeholder="Contoh: Dinas Kesehatan"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+
+                {/* ================================================= */}
+                {/* NAKES → FACILITIES */}
+                {/* ================================================= */}
+
+                {role === "NAKES" ? (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Fasilitas Kesehatan
+                    </label>
+
+                    <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border p-3">
+                      {facilities.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          Belum ada data fasilitas.
+                        </p>
+                      ) : (
+                        facilities.map((facility) => (
+                          <label
+                            key={facility.id}
+                            className="flex cursor-pointer items-start gap-3 rounded-md p-2 text-sm transition hover:bg-muted"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={selectedFacilityIds.includes(
+                                facility.id
+                              )}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedFacilityIds(
+                                    (prev) => [
+                                      ...prev,
+                                      facility.id,
+                                    ]
+                                  );
+                                } else {
+                                  setSelectedFacilityIds(
+                                    (prev) =>
+                                      prev.filter(
+                                        (id) =>
+                                          id !== facility.id
+                                      )
+                                  );
+                                }
+                              }}
+                            />
+
+                            <div>
+                              <p className="font-medium">
+                                {facility.name}
+                              </p>
+
+                              <p className="text-xs text-muted-foreground">
+                                {formatFacilityType(
+                                  facility.type
+                                )}
+
+                                {facility.region
+                                  ? ` • ${facility.region.name}`
+                                  : ""}
+                              </p>
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Pilih satu atau lebih fasilitas tempat Nakes
+                      bertugas.
                     </p>
-                  ) : (
-                    regions.map((region) => (
-                      <label
-                        key={region.id}
-                        className="flex cursor-pointer items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedRegionIds.includes(region.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedRegionIds((prev) => [
-                                ...prev,
-                                region.id,
-                              ]);
-                            } else {
-                              setSelectedRegionIds((prev) =>
-                                prev.filter((id) => id !== region.id)
-                              );
-                            }
-                          }}
-                        />
+                  </div>
+                ) : (
+                  /* ================================================= */
+                  /* PETUGAS → REGIONS */
+                  /* ================================================= */
 
-                        <span>
-                          {region.name} - {region.city}
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Wilayah Kerja
+                    </label>
 
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Pilih satu atau lebih wilayah.
-                </p>
+                    <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border p-3">
+                      {regions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          Belum ada data wilayah.
+                        </p>
+                      ) : (
+                        regions.map((region) => (
+                          <label
+                            key={region.id}
+                            className="flex cursor-pointer items-center gap-3 rounded-md p-2 text-sm transition hover:bg-muted"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedRegionIds.includes(
+                                region.id
+                              )}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedRegionIds(
+                                    (prev) => [
+                                      ...prev,
+                                      region.id,
+                                    ]
+                                  );
+                                } else {
+                                  setSelectedRegionIds(
+                                    (prev) =>
+                                      prev.filter(
+                                        (id) =>
+                                          id !== region.id
+                                      )
+                                  );
+                                }
+                              }}
+                            />
+
+                            <div>
+                              <p className="font-medium">
+                                {region.name}
+                              </p>
+
+                              <p className="text-xs text-muted-foreground">
+                                {region.city}
+                              </p>
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Pilih satu atau lebih wilayah yang menjadi
+                      tanggung jawab Petugas.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Buttons */}
-              <div className="flex justify-end gap-2 pt-4">
+              {/* ================================================= */}
+              {/* MODAL FOOTER */}
+              {/* ================================================= */}
 
+              <div className="flex justify-end gap-3 border-t px-6 py-4">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setEditingUser(null);
-                  }}
+                  onClick={handleCloseModal}
                   disabled={isSubmitting}
-                  className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+                  className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted disabled:opacity-50"
                 >
                   Batal
                 </button>
@@ -690,19 +983,19 @@ export function UserTable({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                  className="rounded-md bg-red-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting
                     ? "Menyimpan..."
-                    : "Simpan"}
+                    : editingUser
+                      ? "Simpan Perubahan"
+                      : "Tambah User"}
                 </button>
-
               </div>
-
             </form>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
