@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import {
   Dialog,
@@ -19,25 +18,17 @@ import {
 
 interface HealthGuideModalProps {
   region: RegionData | RegionDetail;
+  detail: RegionDetail | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function HealthGuideModal({
   region,
+  detail,
   open,
   onOpenChange,
 }: HealthGuideModalProps) {
-  const [detail, setDetail] = useState<RegionDetail | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    fetch(`/api/regions/${region.id}`)
-      .then((res) => res.json())
-      .then((data: RegionDetail) => setDetail(data))
-      .catch(() => {});
-  }, [open, region.id]);
-
   const guide = preventionGuides[region.status];
   const data = detail;
 
