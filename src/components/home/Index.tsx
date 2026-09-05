@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import {
   useCallback,
+  useEffect,
+  useState,
   useSyncExternalStore,
 } from "react";
 
@@ -10,6 +12,7 @@ import { Hero } from "@/components/home/Hero";
 import { CardInfo } from "@/components/home/CardInfo";
 
 import type { RegionData } from "@/types/region";
+import type { FacilityData } from "@/types/facility";
 
 const RegionMap = dynamic(
   () =>
@@ -108,6 +111,15 @@ export function HomeContent() {
   const userLocation =
     parseLocation(storedLocation);
 
+  const [facilities, setFacilities] = useState<FacilityData[]>([]);
+
+  useEffect(() => {
+    fetch("/api/facilities")
+      .then((res) => res.json())
+      .then((data: FacilityData[]) => setFacilities(data))
+      .catch(() => {});
+  }, []);
+
   const saveLocation = useCallback(
     (
       region: RegionData,
@@ -141,11 +153,13 @@ export function HomeContent() {
       <RegionMap
         userCoords={userLocation?.coords}
         userRegion={userLocation?.region}
+        facilities={facilities}
       />
 
       <CardInfo
         userCoords={userLocation?.coords}
         userRegion={userLocation?.region}
+        facilities={facilities}
       />
     </div>
   );

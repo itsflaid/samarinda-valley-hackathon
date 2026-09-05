@@ -4,6 +4,7 @@ import {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react";
 import {
@@ -23,6 +24,7 @@ import { useRouter } from "next/navigation";
 import type { Feature, FeatureCollection } from "geojson";
 
 import { statusColors, type RegionData, type RegionDetail, type RegionStatus } from "@/types/region";
+import type { FacilityData, FacilityType } from "@/types/facility";
 
 import "leaflet/dist/leaflet.css";
 
@@ -34,6 +36,7 @@ interface RegionMapProps {
 
     userRegion?: RegionData | RegionDetail;
     selectedRegion?: RegionData | RegionDetail;
+    facilities?: FacilityData[];
 }
 
 const defaultCenter: [number, number] = [
@@ -60,6 +63,46 @@ const userIcon = L.divIcon({
     iconSize: [20, 20],
     iconAnchor: [10, 10],
 });
+
+const facilityColors: Record<FacilityType, string> = {
+    PUSKESMAS: "#10b981",
+    RUMAH_SAKIT: "#3b82f6",
+    KLINIK: "#8b5cf6",
+};
+
+const facilityLabels: Record<FacilityType, string> = {
+    PUSKESMAS: "Puskesmas",
+    RUMAH_SAKIT: "Rumah Sakit",
+    KLINIK: "Klinik",
+};
+
+function getFacilityIcon(type: FacilityType) {
+    const color = facilityColors[type];
+    return L.divIcon({
+        className: "facility-marker",
+        html: `
+            <div
+                style="
+                    width: 24px;
+                    height: 24px;
+                    background: ${color};
+                    border: 2px solid white;
+                    border-radius: 4px;
+                    box-shadow: 0 1px 5px rgba(0,0,0,.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                "
+            >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 6v12M6 12h12"/>
+                </svg>
+            </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+    });
+}
 
 function normalize(str: string): string {
     return str
@@ -111,10 +154,15 @@ function MapController({
     };
 }) {
     const map = useMap();
+    const hasFlown = useRef(false);
 
     useEffect(() => {
+        if (hasFlown.current) return;
+
         const target = userCoords ?? selectedCoords;
         if (!target) return;
+
+        hasFlown.current = true;
 
         map.flyTo(
             [target.lat, target.lng],
@@ -175,6 +223,62 @@ function RegionPopup({
                     </span>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function FacilityPopup({
+    facility,
+}: {
+    facility: FacilityData;
+}) {
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${facility.latitude},${facility.longitude}`;
+
+    return (
+        <div className="min-w-50">
+            <div className="mb-2">
+                <p className="font-semibold">
+                    {facility.name}
+                </p>
+
+                <p
+                    className="text-xs font-medium"
+                    style={{ color: facilityColors[facility.type] }}
+                >
+                    {facilityLabels[facility.type]}
+                </p>
+            </div>
+
+            <div className="space-y-1 text-xs">
+                <p className="text-muted-foreground">
+                    {facility.address}
+                </p>
+
+                <p className="text-muted-foreground">
+                    {facility.region.name}, {facility.region.city}
+                </p>
+
+                {facility.phone && (
+                    <p className="text-muted-foreground">
+                        Telp: {facility.phone}
+                    </p>
+                )}
+
+                {facility.openingHours && (
+                    <p className="text-muted-foreground">
+                        Jam: {facility.openingHours}
+                    </p>
+                )}
+            </div>
+
+            <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
+            >
+                Buka Google Maps
+            </a>
         </div>
     );
 }
@@ -241,6 +345,7 @@ export function RegionMap({
     userCoords,
     userRegion,
     selectedRegion,
+    facilities = [],
 }: RegionMapProps) {
     const router = useRouter();
     const [fullscreen, setFullscreen] = useState(false);
@@ -355,6 +460,29 @@ export function RegionMap({
         [regionIdByFeatureKey, handlePolygonMouseOver, handlePolygonMouseOut, handlePolygonClick]
     );
 
+    const filteredFacilities = useMemo(() => {
+        const valid = facilities.filter(
+            (f) =>
+                typeof f.latitude === "number" &&
+                typeof f.longitude === "number" &&
+                !isNaN(f.latitude) &&
+                !isNaN(f.longitude)
+        );
+
+        if (selectedRegion) {
+            return valid.filter((f) => f.regionId === selectedRegion.id);
+        }
+
+        if (userRegion) {
+            return valid.filter(
+                (f) =>
+                    f.region.city.toLowerCase() === userRegion.city.toLowerCase()
+            );
+        }
+
+        return valid;
+    }, [facilities, selectedRegion, userRegion]);
+
     return (
         <section className="px-6 py-10">
             <div
@@ -448,6 +576,18 @@ export function RegionMap({
                                 }
                             />
                         )}
+
+                        {filteredFacilities.map((facility) => (
+                            <Marker
+                                key={facility.id}
+                                position={[facility.latitude, facility.longitude]}
+                                icon={getFacilityIcon(facility.type)}
+                            >
+                                <Popup>
+                                    <FacilityPopup facility={facility} />
+                                </Popup>
+                            </Marker>
+                        ))}
                     </MapContainer>
 
                     <button
