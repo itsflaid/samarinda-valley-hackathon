@@ -473,15 +473,8 @@ export function RegionMap({
             return valid.filter((f) => f.regionId === selectedRegion.id);
         }
 
-        if (userRegion) {
-            return valid.filter(
-                (f) =>
-                    f.region.city.toLowerCase() === userRegion.city.toLowerCase()
-            );
-        }
-
         return valid;
-    }, [facilities, selectedRegion, userRegion]);
+    }, [facilities, selectedRegion]);
 
     return (
         <section className="px-6 py-10">

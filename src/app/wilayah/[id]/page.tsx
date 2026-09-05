@@ -22,7 +22,6 @@ export default async function WilayahPage({ params }: PageProps) {
       },
       healthReports: {
         orderBy: { reportedAt: "desc" },
-        take: 20,
         select: {
           id: true,
           diarrhea: true,
@@ -34,7 +33,6 @@ export default async function WilayahPage({ params }: PageProps) {
       },
       waterReports: {
         orderBy: { reportedAt: "desc" },
-        take: 20,
         select: {
           id: true,
           supplyDisruption: true,

@@ -5,6 +5,7 @@ import { MapPin, Send, CheckCircle, AlertTriangle, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { PreventiveSolutionModal } from "@/components/lapor/PreventiveSolutionModal";
 import type { RegionData } from "@/types/region";
 
 const LOCATION_STORAGE_KEY = "user-location";
@@ -63,6 +64,7 @@ export default function LaporPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showSolutionModal, setShowSolutionModal] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(LOCATION_STORAGE_KEY);
@@ -202,6 +204,7 @@ export default function LaporPage() {
       }
 
       setSuccess(true);
+      setShowSolutionModal(true);
     } catch (err: unknown) {
       setSubmitError(
         err instanceof Error ? err.message : "Gagal mengirim laporan"
@@ -213,39 +216,56 @@ export default function LaporPage() {
 
   if (success) {
     return (
-      <div className="px-6 py-16">
-        <div className="mx-auto max-w-lg text-center">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-green-500/10">
-            <CheckCircle className="size-8 text-green-500" />
+      <>
+        <div className="px-6 py-16">
+          <div className="mx-auto max-w-lg text-center">
+            <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-green-500/10">
+              <CheckCircle className="size-8 text-green-500" />
+            </div>
+            <h1 className="text-2xl font-bold">Laporan Berhasil Dikirim</h1>
+            <p className="mt-2 text-muted-foreground">
+              Terima kasih telah melaporkan kondisi{" "}
+              {reportType === "health" ? "kesehatan" : "air"} di wilayah{" "}
+              {region?.name}. Data Anda membantu pemantauan kondisi masyarakat.
+            </p>
+            <Button
+              onClick={() => {
+                setSuccess(false);
+                setShowSolutionModal(false);
+                setReportType(null);
+                setReporterName("");
+                setReporterPhone("");
+                setDiarrhea(false);
+                setVomiting(false);
+                setFever(false);
+                setDehydration(false);
+                setSupplyDisruption(false);
+                setDirtyOrSmelly(false);
+                setSaltyOrBrackish(false);
+                setDryWell(false);
+                setSubmitError(null);
+              }}
+              className="mt-6"
+            >
+              Kirim Laporan Baru
+            </Button>
           </div>
-          <h1 className="text-2xl font-bold">Laporan Berhasil Dikirim</h1>
-          <p className="mt-2 text-muted-foreground">
-            Terima kasih telah melaporkan kondisi{" "}
-            {reportType === "health" ? "kesehatan" : "air"} di wilayah{" "}
-            {region?.name}. Data Anda membantu pemantauan kondisi masyarakat.
-          </p>
-          <Button
-            onClick={() => {
-              setSuccess(false);
-              setReportType(null);
-              setReporterName("");
-              setReporterPhone("");
-              setDiarrhea(false);
-              setVomiting(false);
-              setFever(false);
-              setDehydration(false);
-              setSupplyDisruption(false);
-              setDirtyOrSmelly(false);
-              setSaltyOrBrackish(false);
-              setDryWell(false);
-              setSubmitError(null);
-            }}
-            className="mt-6"
-          >
-            Kirim Laporan Baru
-          </Button>
         </div>
-      </div>
+
+        {reportType === "health" && (
+          <PreventiveSolutionModal
+            open={showSolutionModal}
+            onOpenChange={setShowSolutionModal}
+            symptoms={{
+              diarrhea,
+              vomiting,
+              fever,
+              dehydration,
+            }}
+            userCoords={coords}
+          />
+        )}
+      </>
     );
   }
 
