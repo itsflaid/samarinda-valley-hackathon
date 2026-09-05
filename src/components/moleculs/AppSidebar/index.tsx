@@ -28,7 +28,8 @@ import {
 } from "react-icons/hi2"
 
 
-import { PiClockClockwiseBold } from "react-icons/pi"
+import { PiClockClockwiseBold } from "react-icons/pi";
+import { useSession } from "next-auth/react"
 // import { useProfile } from "@/hooks/use-profile"
 
 const data = {
@@ -70,10 +71,16 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // const { data: user, isLoading, error } = useProfile()
+  const { data: session, status } = useSession()
+
+  console.log("SESSION:", session)
+console.log("STATUS:", status)
+
   const user = {
-    name: "test",
-    email: "test@admin.com",
-    nohp: "082253129334"
+    name: session?.user?.name ?? "User",
+    email: session?.user?.email ?? "-",
+    nohp: session?.user?.nohp ?? "-",
+    role: session?.user?.role ?? "-",
   }
 
 
@@ -85,7 +92,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton size="lg" asChild>
               <Link href="/admin/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Image src={logo} alt="tayama" className="h-8 w-8" />
+                  <Image src={logo} alt="SANITAIR" className="h-8 w-12" />
                 </div>
 
                 <div className="grid flex-1 text-left text-sm leading-tight">
