@@ -1,21 +1,50 @@
 ﻿"use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import { dummyRegions } from "@/lib/mock-data";
+import type { RegionDetail } from "@/types/region";
 import { RegionMap } from "@/components/home/Map";
 import { CardInfo } from "@/components/home/CardInfo";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WilayahPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
 
-  const region = dummyRegions.find(
-    (item) => item.id === params.id
-  );
+  const [region, setRegion] = useState<RegionDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!region) {
+  useEffect(() => {
+    if (!params.id) return;
+    fetch(`/api/regions/${params.id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Wilayah tidak ditemukan");
+        return res.json();
+      })
+      .then((data: RegionDetail) => setRegion(data))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [params.id]);
+
+  if (loading) {
+    return (
+      <main className="py-8">
+        <div className="mx-auto max-w-6xl px-6">
+          <Skeleton className="mb-6 h-10 w-32" />
+          <Skeleton className="mb-8 h-10 w-64" />
+          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+            <Skeleton className="h-105 rounded-2xl md:h-130" />
+            <Skeleton className="h-80 rounded-2xl" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !region) {
     return (
       <main className="px-6 py-16">
         <div className="mx-auto max-w-3xl text-center">
@@ -24,7 +53,7 @@ export default function WilayahPage() {
           </h1>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Wilayah dengan ID {params.id} tidak tersedia.
+            {error || `Wilayah dengan ID ${params.id} tidak tersedia.`}
           </p>
 
           <button

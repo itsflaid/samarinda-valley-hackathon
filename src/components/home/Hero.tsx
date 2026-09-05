@@ -3,11 +3,11 @@
 import { MapPin } from "lucide-react";
 import { useState } from "react";
 
-import { dummyRegions, type DummyRegion } from "@/lib/mock-data";
+import type { RegionData } from "@/types/region";
 
 interface HeroProps {
     onLocate?: (
-        region: DummyRegion,
+        region: RegionData,
         lat: number,
         lng: number
     ) => void;
@@ -19,7 +19,7 @@ export function Hero({ onLocate }: HeroProps) {
         lat: number;
         lng: number;
     } | null>(null);
-    const [region, setRegion] = useState<DummyRegion | null>(null);
+    const [region, setRegion] = useState<RegionData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const normalize = (value: string | null | undefined) =>
@@ -69,7 +69,10 @@ export function Hero({ onLocate }: HeroProps) {
                         data.address?.town ??
                         null;
 
-                    const matchedRegion = dummyRegions.find(
+                    const regionsRes = await fetch("/api/regions");
+                    const regions: RegionData[] = await regionsRes.json();
+
+                    const matchedRegion = regions.find(
                         (item) =>
                             normalize(item.name) === normalize(district) &&
                             normalize(item.city) === normalize(city)

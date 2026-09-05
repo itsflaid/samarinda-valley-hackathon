@@ -1,4 +1,4 @@
-import type { RegionStatus } from "@/lib/mock-data";
+import type { RegionStatus } from "@/types/region";
 
 export interface PreventionItem {
   title: string;
