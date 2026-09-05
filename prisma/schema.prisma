@@ -57,6 +57,7 @@ model Region {
   users         UserRegion[]
   healthReports HealthReport[]
   waterReports  WaterReport[]
+  facilities    Facility[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -107,4 +108,32 @@ model WaterReport {
   latitude          Float
   longitude         Float
   reportedAt        DateTime @default(now())
+}
+
+enum FacilityType {
+  PUSKESMAS
+  RUMAH_SAKIT
+  KLINIK
+}
+
+model Facility {
+  id            String       @id @default(cuid())
+  name          String
+  type          FacilityType
+  address       String
+  regionId      String
+  region        Region       @relation(fields: [regionId], references: [id])
+
+  latitude      Float
+  longitude     Float
+
+  phone         String?
+  openingHours  String?
+  isActive      Boolean      @default(true)
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([regionId])
+  @@index([type])
 }
