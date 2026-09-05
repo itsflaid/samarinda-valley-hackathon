@@ -1,0 +1,33 @@
+### POST HEALTH
+POST http://localhost:3000/api/reports/health
+Content-Type: application/json
+
+{
+    "reporterName": "Fadil",
+    "reporterPhone": "081234567890",
+    "regionId": "samarinda-palaran",
+    "diarrhea": true,
+    "vomiting": true,
+    "fever": false,
+    "dehydration": false,
+    "latitude": -0.637,
+    "longitude": 117.241
+}
+
+###
+
+### POST WATER
+POST http://localhost:3000/api/reports/water
+Content-Type: application/json
+
+{
+    "reporterName": "Fadil",
+    "reporterPhone": "081234567890",
+    "regionId": "samarinda-palaran",
+    "supplyDisruption": true,
+    "dirtyOrSmelly": true,
+    "saltyOrBrackish": false,
+    "dryWell": false,
+    "latitude": -0.637,
+    "longitude": 117.241
+}
