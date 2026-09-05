@@ -119,7 +119,7 @@ export const Authpage = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full mt-5 py-3 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 rounded-md text-white cursor-pointer disabled:bg-indigo-300"
+                            className="w-full mt-5 py-3 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 rounded-md text-white cursor-pointer disabled:bg-red-200"
                         >
                             {loading ? (
                                 <>
