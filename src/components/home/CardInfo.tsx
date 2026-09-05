@@ -1,127 +1,221 @@
 "use client";
 
-import { MapPin, CheckCircle, AlertCircle, AlertOctagon } from "lucide-react";
-import { findNearestRegion } from "@/lib/geo";
-import { statusColors, type DummyRegion } from "@/lib/mock-data";
+import {
+  Activity,
+  Droplets,
+  MapPin,
+  Users,
+  AlertTriangle,
+  Clock,
+} from "lucide-react";
+
+import {
+  statusColors,
+  type DummyRegion,
+} from "@/lib/mock-data";
 
 interface CardInfoProps {
-  userCoords?: { lat: number; lng: number };
+  userCoords?: {
+    lat: number;
+    lng: number;
+  };
+
+  userRegion?: DummyRegion;
+
   onDetail?: () => void;
 }
 
-const riskIcons: Record<DummyRegion["status"], typeof CheckCircle> = {
-  AMAN: CheckCircle,
-  WASPADA: AlertCircle,
-  SIAGA: AlertOctagon,
-  "N/A": AlertCircle,
-};
-
-const riskDescs: Record<DummyRegion["status"], string> = {
-  AMAN: "Risiko terendah",
-  WASPADA: "Risiko sanitasi air perlu diperhatikan",
-  SIAGA: "Risiko tinggi, tindakan segera",
-  "N/A": "Data belum tersedia",
-};
-
-export function CardInfo({ userCoords, onDetail }: CardInfoProps) {
-  // State 1: pengguna belum klik "Deteksi Lokasi Saya" di Hero.
+export function CardInfo({
+  userCoords,
+  userRegion,
+  onDetail,
+}: CardInfoProps) {
   if (!userCoords) {
     return (
-      <div className="py-12 px-6 max-w-3xl mx-auto text-center">
-        <div className="border rounded-2xl border-border bg-white dark:bg-black p-8 shadow-sm">
-          <MapPin className="mx-auto size-6 text-muted-foreground" />
-          <p className="mt-3 text-sm text-muted-foreground">
-            Klik &quot;Deteksi Lokasi Saya&quot; di atas untuk melihat kondisi wilayah Anda.
-          </p>
-        </div>
-      </div>
-    );
-  }
+      <section className="px-6 py-12">
+        <div className="mx-auto max-w-3xl">
+          <div className="rounded-2xl border border-border bg-background p-8 text-center shadow-sm">
+            <MapPin className="mx-auto size-6 text-muted-foreground" />
 
-  const region = findNearestRegion(userCoords.lat, userCoords.lng);
+            <p className="mt-3 text-sm font-medium">
+              Deteksi lokasi Anda
+            </p>
 
-  // State 2: lokasi terdeteksi, tapi tidak ada wilayah mock yang cukup dekat.
-  if (!region) {
-    return (
-      <div className="py-12 px-6 max-w-3xl mx-auto text-center">
-        <div className="border rounded-2xl border-border bg-white dark:bg-black p-8 shadow-sm">
-          <MapPin className="mx-auto size-6 text-muted-foreground" />
-          <p className="mt-3 text-sm text-muted-foreground">
-            Wilayah Anda ({userCoords.lat.toFixed(4)}, {userCoords.lng.toFixed(4)}) belum
-            tercakup dalam data pemantauan.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // State 3: ketemu wilayah mock yang cocok dengan lokasi pengguna.
-  const RiskIcon = riskIcons[region.status];
-
-  return (
-    <div className="py-12 px-6 max-w-3xl mx-auto">
-      <div className="border rounded-2xl border-border bg-white dark:bg-black p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MapPin className="size-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Wilayah Anda</span>
-          </div>
-
-          <button
-            onClick={onDetail}
-            className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Lihat Detail
-          </button>
-        </div>
-
-        <h2 className="text-xl font-bold text-primary mb-1">{region.name}</h2>
-        <p className="text-base text-muted-foreground">{region.city}</p>
-
-        <div className="mt-4 flex items-center gap-2">
-          <span
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-sm font-medium"
-            style={{
-              backgroundColor: statusColors[region.status],
-              color: region.status === "SIAGA" ? "#fff" : "#111827",
-            }}
-          >
-            <RiskIcon className="size-3.5" />
-            {region.status}
-          </span>
-          <span className="text-sm text-muted-foreground">{riskDescs[region.status]}</span>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Status IPA</p>
-            <p className="mt-1">{region.ipaStatus === "MATI" ? "MATI" : "AKTIF"}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Laporan 24 Jam</p>
-            <p className="mt-1">
-              {region.symptomReports != null ? region.symptomReports : "Belum tersedia"} laporan
+            <p className="mt-1 text-sm text-muted-foreground">
+              Gunakan tombol di atas untuk melihat
+              kondisi wilayah Anda.
             </p>
           </div>
         </div>
+      </section>
+    );
+  }
 
-        <p className="mt-4 text-sm text-muted-foreground">
-          {region.ipaCondition ? "Gangguan operasional: " + region.ipaCondition : "Operasional normal"}
-        </p>
+  if (!userRegion) {
+    return (
+      <section className="px-6 py-12">
+        <div className="mx-auto max-w-3xl">
+          <div className="rounded-2xl border border-border bg-background p-8 text-center shadow-sm">
+            <AlertTriangle className="mx-auto size-6 text-muted-foreground" />
 
-        <p className="mt-4 text-sm text-muted-foreground">
-          Diperbarui {region.lastUpdated || "beberapa saat"} lalu
-        </p>
+            <p className="mt-3 text-sm font-medium">
+              Wilayah belum tersedia
+            </p>
 
-        <div className="mt-6">
-          <button
-            onClick={onDetail}
-            className="w-full rounded-lg bg-primary px-4 py-2 text-lg font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Lihat Detail Wilayah
-          </button>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Wilayah Anda belum tercakup dalam data
+              pemantauan.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const region = userRegion;
+
+  return (
+    <section className="px-6 pb-12">
+      <div className="mx-auto max-w-3xl">
+        <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+          <div className="border-b border-border p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="size-4" />
+                  Wilayah Anda
+                </div>
+
+                <h2 className="text-2xl font-bold">
+                  {region.name}
+                </h2>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {region.city}, {region.province}
+                </p>
+              </div>
+
+              <div
+                className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold"
+                style={{
+                  color: statusColors[region.status],
+                  backgroundColor: `${statusColors[region.status]}15`,
+                }}
+              >
+                <span
+                  className="size-2 rounded-full"
+                  style={{
+                    backgroundColor:
+                      statusColors[region.status],
+                  }}
+                />
+
+                {region.status}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-px bg-border sm:grid-cols-2">
+            <div className="bg-background p-5">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <Droplets className="size-5 text-primary" />
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Status IPA
+                  </p>
+
+                  <p className="font-semibold">
+                    {region.ipaStatus ?? "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {region.ipaCondition && (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {region.ipaCondition}
+                </p>
+              )}
+            </div>
+
+            <div className="bg-background p-5">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <Users className="size-5 text-primary" />
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Laporan Gejala
+                  </p>
+
+                  <p className="font-semibold">
+                    {region.symptomReports ?? "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-3 text-sm text-muted-foreground">
+                Laporan masyarakat di wilayah ini
+              </p>
+            </div>
+
+            <div className="bg-background p-5">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <Activity className="size-5 text-primary" />
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Kondisi Wilayah
+                  </p>
+
+                  <p
+                    className="font-semibold"
+                    style={{
+                      color:
+                        statusColors[region.status],
+                    }}
+                  >
+                    {region.status}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-background p-5">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <Clock className="size-5 text-primary" />
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Pembaruan Terakhir
+                  </p>
+
+                  <p className="font-semibold">
+                    {region.lastUpdated ?? "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-border p-6 sm:flex-row">
+            <button
+              type="button"
+              onClick={onDetail}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Lihat Detail Wilayah
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
