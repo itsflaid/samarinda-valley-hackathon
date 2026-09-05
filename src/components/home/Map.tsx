@@ -310,7 +310,6 @@ export function RegionMap({
                                     "AMAN",
                                     "WASPADA",
                                     "SIAGA",
-                                    "N/A",
                                 ] as const
                             ).map(
                                 (status) => (

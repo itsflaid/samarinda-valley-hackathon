@@ -132,4 +132,18 @@
   html {
     @apply font-sans;
   }
+  [data-slot="dialog-content"] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  [data-slot="dialog-content"]::-webkit-scrollbar {
+    width: 6px;
+  }
+  [data-slot="dialog-content"]::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  [data-slot="dialog-content"]::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+  }
 }
