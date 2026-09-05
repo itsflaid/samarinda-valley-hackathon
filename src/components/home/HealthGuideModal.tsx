@@ -34,15 +34,20 @@ export function HealthGuideModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto z-10000">
-        <DialogHeader>
-          <DialogTitle>Lihat Detail Wilayah</DialogTitle>
-          <DialogDescription>
-            Detail kondisi wilayah dan panduan kesehatan.
-          </DialogDescription>
-        </DialogHeader>
+      {/* DialogContent sendiri TIDAK scroll — cuma jadi frame diam.
+          Tombol X (dirender otomatis oleh DialogContent) posisinya
+          absolute relatif ke frame ini, jadi ikut diam juga. */}
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden p-0 flex flex-col gap-0 z-10000">
+        {/* Semua isi (header + body) dibungkus di sini, dan HANYA
+            div ini yang overflow-y-auto — jadi yang scroll cuma konten. */}
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+          <DialogHeader>
+            <DialogTitle>Lihat Detail Wilayah</DialogTitle>
+            <DialogDescription>
+              Detail kondisi wilayah dan panduan kesehatan.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-5 p-4">
           <div>
             <p className="text-xs text-muted-foreground">Wilayah</p>
             <p className="text-base font-semibold">
@@ -137,13 +142,18 @@ export function HealthGuideModal({
             </p>
           </div>
 
-          <ol className="space-y-4 list-decimal list-inside">
-            {guide.items.map((item) => (
-              <li key={item.title}>
-                <p className="text-sm font-medium">{item.title}</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {item.description}
-                </p>
+          <ol className="space-y-4">
+            {guide.items.map((item, index) => (
+              <li key={item.title} className="flex gap-3">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                  {index + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
               </li>
             ))}
           </ol>

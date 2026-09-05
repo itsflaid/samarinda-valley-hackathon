@@ -10,7 +10,8 @@ import {
     SheetTitle,
     SheetTrigger,
 } from "@/components/ui/sheet";
-import { Droplets, LogIn, MenuIcon } from "lucide-react";
+import { LogIn, MenuIcon } from "lucide-react";
+import Image from "next/image";
 
 const links = [
     { href: "/", label: "Home" },
@@ -37,7 +38,7 @@ export function MobileNav() {
                             className="flex items-center gap-2 font-bold text-primary"
                             onClick={() => setOpen(false)}
                         >
-                            <Droplets className="h-5 w-5" />
+                            <Image src="/images/logos.webp" alt="SANITAIR" width={28} height={28} className="h-5 w-auto" />
                             SANITAIR
                         </Link>
                     </SheetTitle>

@@ -11,6 +11,43 @@ export interface PreventionGuide {
   items: PreventionItem[];
 }
 
+export interface SymptomSolution {
+  title: string;
+  solution: string;
+}
+
+export const singleSymptomSolutions: Record<string, SymptomSolution> = {
+  diarrhea: {
+    title: "Diare Akut / Mencret Cair",
+    solution:
+      "Segera minum cairan Oralit Rumahan: Larutkan 1 sendok teh gula pasir + ¼ sendok teh garam dapur ke dalam 200 ml air minum yang telah direbus matang sempurna. Minum setiap kali selesai buang air besar untuk mengganti cairan yang hilang.",
+  },
+  vomiting: {
+    title: "Mual & Muntah Hebat",
+    solution:
+      "Istirahatkan lambung, hindari makan/minum terburu-buru. Berikan air hangat atau air jahe dalam sesapan kecil (1-2 sendok) setiap 15 menit. Jangan langsung meminum air dalam volume besar untuk mencegah refleks muntah susulan.",
+  },
+  fever: {
+    title: "Demam Tinggi / Tubuh Menggigil",
+    solution:
+      "Kompres hangat di area lipatan ketiak atau selangkangan (bukan kompres es pada dahi). Pastikan pasien tetap minum air putih matang secara berkala untuk mencegah dehidrasi akibat penguapan suhu tubuh yang tinggi.",
+  },
+  dehydration: {
+    title: "Dehidrasi Lemas (Mata cowong/cekung)",
+    solution:
+      "Tubuh Anda sedang kekurangan cairan kritis. Segera konsumsi cairan rehidrasi (oralit atau air kelapa muda jika tersedia). Hindari minuman berkafein, teh pekat, atau soda yang dapat memperburuk kondisi cairan tubuh.",
+  },
+};
+
+export const singleSymptomClosing =
+  "Tetap pantau kondisi tubuh Anda dalam 12 jam ke depan. Jika gejala menetap atau memburuk, segera kunjungi fasilitas kesehatan terdekat.";
+
+export const emergencyWarning = {
+  title: "INDIKASI DEHIDRASI & INFEKSI AKUT",
+  message:
+    "Anda mengalami kombinasi gejala klinis awal penyakit bawaan air yang berisiko fatal jika terlambat ditangani. Dilarang melakukan penanganan mandiri lebih lama di rumah. Anda diwajibkan segera pergi ke fasilitas kesehatan terdekat saat ini juga.",
+};
+
 export const preventionGuides: Record<RegionStatus, PreventionGuide> = {
   AMAN: {
     title: "Kondisi Wilayah Aman",

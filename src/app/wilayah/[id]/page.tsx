@@ -2,6 +2,8 @@
 import { prisma } from "@/lib/prisma";
 import { RegionDetailClient } from "./RegionDetailClient";
 
+import type { FacilityData } from "@/types/facility";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -20,7 +22,6 @@ export default async function WilayahPage({ params }: PageProps) {
       },
       healthReports: {
         orderBy: { reportedAt: "desc" },
-        take: 20,
         select: {
           id: true,
           diarrhea: true,
@@ -32,7 +33,6 @@ export default async function WilayahPage({ params }: PageProps) {
       },
       waterReports: {
         orderBy: { reportedAt: "desc" },
-        take: 20,
         select: {
           id: true,
           supplyDisruption: true,
@@ -41,6 +41,10 @@ export default async function WilayahPage({ params }: PageProps) {
           dryWell: true,
           reportedAt: true,
         },
+      },
+      facilities: {
+        where: { isActive: true },
+        orderBy: { name: "asc" },
       },
     },
   });
@@ -94,5 +98,24 @@ export default async function WilayahPage({ params }: PageProps) {
     lastUpdated: lastUpdated?.toISOString() ?? null,
   };
 
-  return <RegionDetailClient regionDetail={regionDetail} />;
+  const facilities: FacilityData[] = region.facilities.map((f) => ({
+    id: f.id,
+    name: f.name,
+    type: f.type,
+    address: f.address,
+    regionId: f.regionId,
+    latitude: f.latitude,
+    longitude: f.longitude,
+    phone: f.phone,
+    openingHours: f.openingHours,
+    isActive: f.isActive,
+    region: {
+      id: region.id,
+      name: region.name,
+      city: region.city,
+      province: region.province,
+    },
+  }));
+
+  return <RegionDetailClient regionDetail={regionDetail} facilities={facilities} />;
 }

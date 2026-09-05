@@ -13,6 +13,9 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "SANITAIR",
   description: "Deteksi resiko kesehatan akibat kondisi air Kaltim",
+  icons: {
+    icon: "/favicon.webp",
+  },
 };
 
 export default function RootLayout({

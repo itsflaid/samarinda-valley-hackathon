@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Activity,
@@ -9,6 +9,7 @@ import {
   Users,
   AlertTriangle,
   Clock,
+  Building2,
 } from "lucide-react";
 
 import {
@@ -16,6 +17,7 @@ import {
   type RegionData,
   type RegionDetail,
 } from "@/types/region";
+import type { FacilityData, FacilityType } from "@/types/facility";
 import { formatRelativeTime } from "@/lib/utils";
 import { HealthGuideModal } from "./HealthGuideModal";
 
@@ -27,12 +29,14 @@ interface CardInfoProps {
 
   userRegion?: RegionData | RegionDetail;
   regionDetail?: RegionDetail;
+  facilities?: FacilityData[];
 }
 
 export function CardInfo({
   userCoords,
   userRegion,
   regionDetail: initialDetail,
+  facilities = [],
 }: CardInfoProps) {
   const [guideOpen, setGuideOpen] = useState(false);
   const [detail, setDetail] = useState<RegionDetail | null>(initialDetail ?? null);
@@ -44,6 +48,36 @@ export function CardInfo({
       .then((data: RegionDetail) => setDetail(data))
       .catch(() => {});
   }, [userRegion, initialDetail]);
+
+  const facilityTypeLabels: Record<FacilityType, string> = {
+    PUSKESMAS: "Puskesmas",
+    RUMAH_SAKIT: "Rumah Sakit",
+    KLINIK: "Klinik",
+  };
+
+  const sortedFacilities = useMemo(() => {
+    if (!userCoords || facilities.length === 0) return [];
+
+    function haversine(lat1: number, lng1: number, lat2: number, lng2: number) {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLng = ((lng2 - lng1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    return facilities
+      .map((f) => ({
+        ...f,
+        distance: haversine(userCoords.lat, userCoords.lng, f.latitude, f.longitude),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 5);
+  }, [facilities, userCoords]);
   if (!userCoords) {
     return (
       <section className="px-6 py-12">
@@ -218,6 +252,59 @@ export function CardInfo({
               </div>
             </div>
           </div>
+
+          {facilities.length > 0 && (
+            <div className="border-t border-border p-6">
+              <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <Building2 className="size-4" />
+                Fasilitas Kesehatan Terdekat
+              </div>
+
+              {sortedFacilities.length > 0 ? (
+                <div className="space-y-3">
+                  {sortedFacilities.map((facility) => {
+                    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${facility.latitude},${facility.longitude}`;
+                    const distText =
+                      facility.distance < 1
+                        ? `${Math.round(facility.distance * 1000)} m`
+                        : `${facility.distance.toFixed(1)} km`;
+
+                    return (
+                      <div
+                        key={facility.id}
+                        className="flex items-start justify-between gap-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">
+                            {facility.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {facilityTypeLabels[facility.type]}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {distText}
+                          </p>
+                        </div>
+
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                        >
+                          Rute
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Belum ada fasilitas kesehatan di sekitar Anda.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-3 border-t border-border p-6 sm:flex-row">
             <button
