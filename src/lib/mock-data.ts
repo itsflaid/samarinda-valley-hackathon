@@ -1,4 +1,4 @@
-export type RegionStatus = "AMAN" | "WASPADA" | "SIAGA" | "N/A";
+export type RegionStatus = "AMAN" | "WASPADA" | "SIAGA";
 
 export type IPAStatus = "AKTIF" | "MATI" | null;
 
@@ -202,5 +202,4 @@ export const statusColors: Record<RegionStatus, string> = {
   AMAN: "#22c55e",
   WASPADA: "#eab308",
   SIAGA: "#ef4444",
-  "N/A": "#9ca3af",
 };
