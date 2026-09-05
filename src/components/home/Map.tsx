@@ -16,10 +16,6 @@ import {
     useMap,
 } from "react-leaflet";
 import L from "leaflet";
-import {
-    Maximize2,
-    Minimize2,
-} from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Feature, FeatureCollection } from "geojson";
 
@@ -348,7 +344,7 @@ export function RegionMap({
     facilities = [],
 }: RegionMapProps) {
     const router = useRouter();
-    const [fullscreen, setFullscreen] = useState(false);
+    
     const [regions, setRegions] = useState<RegionData[]>([]);
     const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
     const [hoveredRegionId, setHoveredRegionId] = useState<string | null>(null);
@@ -481,9 +477,7 @@ export function RegionMap({
         <section className="px-6 py-10">
             <div
                 className={
-                    fullscreen
-                        ? "fixed inset-0 z-50 bg-background p-4"
-                        : "mx-auto max-w-6xl"
+                    "mx-auto max-w-6xl"
                 }
             >
                 <div className="relative h-105 overflow-hidden rounded-2xl border border-border bg-muted shadow-sm md:h-130">
@@ -583,28 +577,6 @@ export function RegionMap({
                             </Marker>
                         ))}
                     </MapContainer>
-
-                    <button
-                        type="button"
-                        onClick={() =>
-                            setFullscreen(
-                                (value) =>
-                                    !value
-                            )
-                        }
-                        className="absolute right-4 top-4 z-1000 inline-flex size-10 items-center justify-center rounded-lg border border-border bg-background/95 shadow-sm backdrop-blur transition-colors hover:bg-muted"
-                        aria-label={
-                            fullscreen
-                                ? "Keluar fullscreen"
-                                : "Perbesar peta"
-                        }
-                    >
-                        {fullscreen ? (
-                            <Minimize2 className="size-4" />
-                        ) : (
-                            <Maximize2 className="size-4" />
-                        )}
-                    </button>
 
                     <div className="absolute bottom-4 left-4 z-1000 rounded-xl border border-border bg-background/95 p-3 shadow-sm backdrop-blur">
                         <p className="mb-2 text-xs font-semibold">

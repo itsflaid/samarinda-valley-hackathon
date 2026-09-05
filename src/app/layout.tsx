@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
-import AuthSessionProvider from "@/components/providers/SessionProvider"
-import { Navbar } from "@/components/layouts/navbar";
+import AuthSessionProvider from "@/components/providers/SessionProvider";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -24,14 +23,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="id"
-      className={jakarta.variable}>
+    <html lang="id" className={jakarta.variable}>
       <body className="min-h-full flex flex-col">
-        <Navbar />
         <AuthSessionProvider>
-        {children}
-        <Toaster position="top-right" richColors />
+          {children}
+          <Toaster position="top-right" richColors />
         </AuthSessionProvider>
       </body>
     </html>
