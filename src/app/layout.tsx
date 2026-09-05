@@ -1,5 +1,3 @@
-// src/app/layout.tsx
-
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
@@ -27,6 +25,7 @@ export default function RootLayout({
       lang="id"
       className={jakarta.variable}>
       <body className="min-h-full flex flex-col">
+        <Navbar />
         <AuthSessionProvider>
         {children}
         <Toaster position="top-right" richColors />
