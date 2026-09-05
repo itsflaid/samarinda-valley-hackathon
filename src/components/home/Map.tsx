@@ -1,7 +1,9 @@
 "use client";
 
 import {
+    useCallback,
     useEffect,
+    useMemo,
     useState,
 } from "react";
 import {
@@ -9,6 +11,7 @@ import {
     TileLayer,
     Marker,
     Popup,
+    GeoJSON,
     useMap,
 } from "react-leaflet";
 import L from "leaflet";
@@ -16,8 +19,10 @@ import {
     Maximize2,
     Minimize2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { Feature, FeatureCollection } from "geojson";
 
-import { statusColors, type RegionData, type RegionDetail } from "@/types/region";
+import { statusColors, type RegionData, type RegionDetail, type RegionStatus } from "@/types/region";
 
 import "leaflet/dist/leaflet.css";
 
@@ -28,6 +33,7 @@ interface RegionMapProps {
     };
 
     userRegion?: RegionData | RegionDetail;
+    selectedRegion?: RegionData | RegionDetail;
 }
 
 const defaultCenter: [number, number] = [
@@ -55,10 +61,51 @@ const userIcon = L.divIcon({
     iconAnchor: [10, 10],
 });
 
+function normalize(str: string): string {
+    return str
+        .toUpperCase()
+        .trim()
+        .replace(/^KOTA\s+/i, "")
+        .replace(/^KAB\.\s*/i, "")
+        .replace(/^KAB\s+/i, "");
+}
+
+const defaultPolygonStyle = {
+    fillOpacity: 0,
+    color: "#334155",
+    weight: 1.5,
+    opacity: 0.7,
+};
+
+function getActiveStyle(status: RegionStatus) {
+    return {
+        fillColor: statusColors[status],
+        fillOpacity: 0.30,
+        color: "#334155",
+        weight: 2.5,
+        opacity: 1,
+    };
+}
+
+function getHoverStyle(status: RegionStatus) {
+    return {
+        fillColor: statusColors[status],
+        fillOpacity: 0.30,
+        color: "#334155",
+        weight: 3.5,
+        opacity: 1,
+    };
+}
+
 function MapController({
     userCoords,
+    selectedCoords,
 }: {
     userCoords?: {
+        lat: number;
+        lng: number;
+    };
+    selectedCoords?: {
         lat: number;
         lng: number;
     };
@@ -66,16 +113,17 @@ function MapController({
     const map = useMap();
 
     useEffect(() => {
-        if (!userCoords) return;
+        const target = userCoords ?? selectedCoords;
+        if (!target) return;
 
         map.flyTo(
-            [userCoords.lat, userCoords.lng],
+            [target.lat, target.lng],
             13,
             {
                 duration: 1.2,
             }
         );
-    }, [map, userCoords]);
+    }, [map, userCoords, selectedCoords]);
 
     return null;
 }
@@ -192,10 +240,13 @@ function UserLocationMarker({
 export function RegionMap({
     userCoords,
     userRegion,
+    selectedRegion,
 }: RegionMapProps) {
-    const [fullscreen, setFullscreen] =
-        useState(false);
+    const router = useRouter();
+    const [fullscreen, setFullscreen] = useState(false);
     const [regions, setRegions] = useState<RegionData[]>([]);
+    const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
+    const [hoveredRegionId, setHoveredRegionId] = useState<string | null>(null);
 
     useEffect(() => {
         fetch("/api/regions")
@@ -203,6 +254,106 @@ export function RegionMap({
             .then((data: RegionData[]) => setRegions(data))
             .catch(() => {});
     }, []);
+
+    useEffect(() => {
+        fetch("/geojson/kecamatan-kaltim.json")
+            .then((res) => res.json())
+            .then((data: FeatureCollection) => setGeojson(data))
+            .catch(() => {});
+    }, []);
+
+    const featureByRegionId = useMemo(() => {
+        if (!geojson || !regions.length) return new Map<string, Feature>();
+        const fc = geojson as FeatureCollection;
+        if (!fc.features) return new Map<string, Feature>();
+
+        const map = new Map<string, Feature>();
+        for (const feature of fc.features) {
+            const kecName = feature.properties?.NAMA_KEC;
+            const kabName = feature.properties?.NAMA_KAB;
+            if (!kecName || !kabName) continue;
+
+            const matched = regions.find(
+                (r) =>
+                    normalize(r.name) === normalize(kecName) &&
+                    normalize(r.city) === normalize(kabName)
+            );
+            if (matched) map.set(matched.id, feature);
+        }
+        return map;
+    }, [geojson, regions]);
+
+    const regionIdByFeatureKey = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const [regionId, feature] of featureByRegionId) {
+            const key = featureKey(feature);
+            map.set(key, regionId);
+        }
+        return map;
+    }, [featureByRegionId]);
+
+    const activeRegionId = selectedRegion?.id ?? userRegion?.id ?? null;
+
+    const handleMarkerMouseOver = useCallback((regionId: string) => {
+        setHoveredRegionId(regionId);
+    }, []);
+
+    const handleMarkerMouseOut = useCallback(() => {
+        setHoveredRegionId(null);
+    }, []);
+
+    const handlePolygonMouseOver = useCallback((regionId: string) => {
+        setHoveredRegionId(regionId);
+    }, []);
+
+    const handlePolygonMouseOut = useCallback(() => {
+        setHoveredRegionId(null);
+    }, []);
+
+    const handlePolygonClick = useCallback((regionId: string) => {
+        router.push(`/wilayah/${regionId}`);
+    }, [router]);
+
+    const geojsonStyle = useCallback(
+        (feature?: Feature) => {
+            if (!feature) return defaultPolygonStyle;
+
+            const key = featureKey(feature);
+            const regionId = regionIdByFeatureKey.get(key);
+            if (!regionId) return defaultPolygonStyle;
+
+            const isHovered = regionId === hoveredRegionId;
+            const isActive = regionId === activeRegionId;
+
+            if (isHovered && !isActive) {
+                const region = regions.find((r) => r.id === regionId);
+                return region ? getHoverStyle(region.status) : defaultPolygonStyle;
+            }
+
+            if (isActive) {
+                const region = regions.find((r) => r.id === regionId);
+                return region ? getActiveStyle(region.status) : defaultPolygonStyle;
+            }
+
+            return defaultPolygonStyle;
+        },
+        [hoveredRegionId, activeRegionId, regions, regionIdByFeatureKey]
+    );
+
+    const onEachFeature = useCallback(
+        (feature: Feature, layer: L.Layer) => {
+            const key = featureKey(feature);
+            const regionId = regionIdByFeatureKey.get(key);
+            if (!regionId) return;
+
+            layer.on({
+                mouseover: () => handlePolygonMouseOver(regionId),
+                mouseout: () => handlePolygonMouseOut(),
+                click: () => handlePolygonClick(regionId),
+            });
+        },
+        [regionIdByFeatureKey, handlePolygonMouseOver, handlePolygonMouseOut, handlePolygonClick]
+    );
 
     return (
         <section className="px-6 py-10">
@@ -227,7 +378,21 @@ export function RegionMap({
 
                         <MapController
                             userCoords={userCoords}
+                            selectedCoords={
+                                selectedRegion
+                                    ? { lat: selectedRegion.latitude, lng: selectedRegion.longitude }
+                                    : undefined
+                            }
                         />
+
+                        {geojson && regions.length > 0 && (
+                            <GeoJSON
+                                key="boundaries"
+                                data={geojson}
+                                style={geojsonStyle}
+                                onEachFeature={onEachFeature}
+                            />
+                        )}
 
                         {regions.map(
                             (region) => (
@@ -261,6 +426,10 @@ export function RegionMap({
                                             8,
                                         ],
                                     })}
+                                    eventHandlers={{
+                                        mouseover: () => handleMarkerMouseOver(region.id),
+                                        mouseout: () => handleMarkerMouseOut(),
+                                    }}
                                 >
                                     <Popup>
                                         <RegionPopup
@@ -347,4 +516,10 @@ export function RegionMap({
             </div>
         </section>
     );
+}
+
+function featureKey(feature: Feature): string {
+    const kec = feature.properties?.NAMA_KEC ?? "";
+    const kab = feature.properties?.NAMA_KAB ?? "";
+    return `${normalize(kec)}::${normalize(kab)}`;
 }

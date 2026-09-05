@@ -26,22 +26,24 @@ interface CardInfoProps {
   };
 
   userRegion?: RegionData | RegionDetail;
+  regionDetail?: RegionDetail;
 }
 
 export function CardInfo({
   userCoords,
   userRegion,
+  regionDetail: initialDetail,
 }: CardInfoProps) {
   const [guideOpen, setGuideOpen] = useState(false);
-  const [detail, setDetail] = useState<RegionDetail | null>(null);
+  const [detail, setDetail] = useState<RegionDetail | null>(initialDetail ?? null);
 
   useEffect(() => {
-    if (!userRegion) return;
+    if (initialDetail || !userRegion) return;
     fetch(`/api/regions/${userRegion.id}`)
       .then((res) => res.json())
       .then((data: RegionDetail) => setDetail(data))
       .catch(() => {});
-  }, [userRegion]);
+  }, [userRegion, initialDetail]);
   if (!userCoords) {
     return (
       <section className="px-6 py-12">
@@ -231,6 +233,7 @@ export function CardInfo({
 
       <HealthGuideModal
         region={region}
+        detail={detail}
         open={guideOpen}
         onOpenChange={setGuideOpen}
       />
