@@ -51,7 +51,6 @@ export const authOptions: NextAuthOptions = {
                     role: user.role,
                     profesi: user.profesi,
                     instansi: user.instansi,
-                    wilayahKerja: user.wilayahKerja,
                 }
             },
         }),
@@ -71,7 +70,6 @@ export const authOptions: NextAuthOptions = {
                 token.role = user.role
                 token.profesi = user.profesi
                 token.instansi = user.instansi
-                token.wilayahKerja = user.wilayahKerja
             }
 
             return token
@@ -91,8 +89,6 @@ export const authOptions: NextAuthOptions = {
                     | "BIDAN"
                     | null
                 session.user.instansi = token.instansi as string | null
-                session.user.wilayahKerja =
-                    token.wilayahKerja as string | null
             }
 
             return session

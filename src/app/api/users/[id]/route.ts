@@ -28,7 +28,6 @@ export async function PUT(
       role,
       profesi,
       instansi,
-      wilayahKerja,
     } = body;
 
     if (!name || !email || !nohp || !role) {
@@ -120,7 +119,6 @@ export async function PUT(
       role: "NAKES" | "PETUGAS";
       profesi: "DOKTER" | "PERAWAT" | "BIDAN" | null;
       instansi: string | null;
-      wilayahKerja: string | null;
       password?: string;
     } = {
       name,
@@ -129,7 +127,6 @@ export async function PUT(
       role,
       profesi: role === "NAKES" ? profesi : null,
       instansi: instansi || null,
-      wilayahKerja: wilayahKerja || null,
     };
 
     // Password hanya diubah kalau diisi
@@ -157,7 +154,6 @@ export async function PUT(
         role: user.role,
         profesi: user.profesi,
         instansi: user.instansi,
-        wilayahKerja: user.wilayahKerja,
       },
     });
   } catch (error) {

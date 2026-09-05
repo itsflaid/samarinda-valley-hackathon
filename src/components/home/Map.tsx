@@ -461,7 +461,8 @@ export function RegionMap({
     );
 
     const filteredFacilities = useMemo(() => {
-        const valid = facilities.filter(
+        const facilitiesArray = Array.isArray(facilities) ? facilities : [];
+        const valid = facilitiesArray.filter(
             (f) =>
                 typeof f.latitude === "number" &&
                 typeof f.longitude === "number" &&

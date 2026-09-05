@@ -56,7 +56,8 @@ export function CardInfo({
   };
 
   const sortedFacilities = useMemo(() => {
-    if (!userCoords || facilities.length === 0) return [];
+    if (!userCoords || !Array.isArray(facilities) || facilities.length === 0)
+      return [];
 
     function haversine(lat1: number, lng1: number, lat2: number, lng2: number) {
       const R = 6371;

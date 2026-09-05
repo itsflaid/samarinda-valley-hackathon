@@ -63,7 +63,6 @@ export async function POST(req: Request) {
                 role: user.role,
                 profesi: user.profesi,
                 instansi: user.instansi,
-                wilayahKerja: user.wilayahKerja,
             },
             redirectTo,
         });
