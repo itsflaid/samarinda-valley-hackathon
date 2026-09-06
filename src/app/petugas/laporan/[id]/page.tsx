@@ -46,7 +46,7 @@ export default function PetugasReportDetailPage() {
         const fetchReport = async () => {
             try {
                 const response = await fetch(
-                    `/api/petugas/reports/${params.id}`
+                    `/api/petugas/reports/${params?.id}`
                 );
 
                 const data =

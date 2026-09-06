@@ -37,7 +37,7 @@ export function NavProjects({
     }
 
     // Untuk route lain, tetap aktif kalau masuk child route
-    return pathname === url || pathname.startsWith(`${url}/`)
+    return pathname === url || !!pathname?.startsWith(`${url}/`)
   }
 
   return (

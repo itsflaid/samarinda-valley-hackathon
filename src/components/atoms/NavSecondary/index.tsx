@@ -28,7 +28,7 @@ export function NavSecondary({
   const isActiveRoute = (url: string) => {
     if (!url || url === "#") return false
 
-    return pathname === url || pathname.startsWith(`${url}/`)
+    return pathname === url || !!pathname?.startsWith(`${url}/`)
   }
 
   return (

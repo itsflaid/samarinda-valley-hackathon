@@ -32,6 +32,9 @@ type DashboardData = {
         fever: boolean;
         dehydration: boolean;
 
+        latitude: number;
+        longitude: number;
+
         reportedAt: string;
 
         region: {

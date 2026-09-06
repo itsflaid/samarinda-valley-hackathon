@@ -18,7 +18,7 @@ const titleMap: Record<string, string> = {
 export default function DashboardTitle() {
   const pathname = usePathname();
 
-  const title = titleMap[pathname] || "Dashboard";
+  const title = (pathname && titleMap[pathname]) || "Dashboard";
 
   return <>{title}</>;
 }
