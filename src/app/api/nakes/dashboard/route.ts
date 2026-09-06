@@ -31,36 +31,19 @@ export async function GET() {
                     userId: session.user.id,
                 },
                 select: {
-                    id: true,
-                    reporterName: true,
-
-                    diarrhea: true,
-                    vomiting: true,
-                    fever: true,
-                    dehydration: true,
-
-                    latitude: true,
-                    longitude: true,
-
-                    reportedAt: true,
-
-                    region: {
+                    facility: {
                         select: {
                             id: true,
                             name: true,
-                            city: true,
-                        },
-                    },
-
-                    assessments: {
-                        take: 1,
-                        orderBy: {
-                            assessedAt: "desc",
-                        },
-                        select: {
-                            id: true,
-                            riskLevel: true,
-                            assessedAt: true,
+                            type: true,
+                            region: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    city: true,
+                                    status: true,
+                                },
+                            },
                         },
                     },
                 },
@@ -117,6 +100,8 @@ export async function GET() {
                     id: true,
                     reporterName: true,
                     diarrhea: true,
+                    latitude: true,
+                    longitude: true,
                     vomiting: true,
                     fever: true,
                     dehydration: true,

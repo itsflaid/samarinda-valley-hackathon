@@ -26,30 +26,64 @@ type Report = {
     } | null;
 };
 
-type ReportsResponse = {
-    latestReports: Report[];
-};
-
 export default function LaporanPage() {
     const [reports, setReports] = useState<Report[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const router = useRouter();
+
+    const ITEMS_PER_PAGE = 10;
+    const MAX_REPORTS = 20;
 
     useEffect(() => {
         const fetchReports = async () => {
             try {
-                const response = await fetch("/api/nakes/dashboard");
+                setIsLoading(true);
+
+                const response = await fetch(
+                    "/api/nakes/reports",
+                    {
+                        cache: "no-store",
+                    }
+                );
 
                 if (!response.ok) {
-                    throw new Error("Gagal mengambil laporan");
+                    throw new Error(
+                        "Gagal mengambil laporan"
+                    );
                 }
 
-                const result: ReportsResponse = await response.json();
+                const result = await response.json();
 
-                setReports(result.latestReports ?? []);
+                const data: Report[] = Array.isArray(result)
+                    ? result
+                    : Array.isArray(result?.reports)
+                      ? result.reports
+                      : [];
+
+                // Pastikan urutan terbaru berdasarkan reportedAt
+                const latestReports = [...data]
+                    .sort(
+                        (a, b) =>
+                            new Date(
+                                b.reportedAt
+                            ).getTime() -
+                            new Date(
+                                a.reportedAt
+                            ).getTime()
+                    )
+                    .slice(0, MAX_REPORTS);
+
+                setReports(latestReports);
+                setCurrentPage(1);
             } catch (error) {
-                console.error("FETCH REPORTS ERROR:", error);
+                console.error(
+                    "FETCH NAKES REPORTS ERROR:",
+                    error
+                );
+
+                setReports([]);
             } finally {
                 setIsLoading(false);
             }
@@ -58,47 +92,81 @@ export default function LaporanPage() {
         fetchReports();
     }, []);
 
+    // ==========================================
+    // GEJALA
+    // ==========================================
+
     const getSymptoms = (report: Report) => {
         const symptoms: string[] = [];
 
-        if (report.diarrhea) symptoms.push("Diare");
-        if (report.vomiting) symptoms.push("Muntah");
-        if (report.fever) symptoms.push("Demam");
-        if (report.dehydration) symptoms.push("Dehidrasi");
+        if (report.diarrhea) {
+            symptoms.push("Diare");
+        }
+
+        if (report.vomiting) {
+            symptoms.push("Muntah");
+        }
+
+        if (report.fever) {
+            symptoms.push("Demam");
+        }
+
+        if (report.dehydration) {
+            symptoms.push("Dehidrasi");
+        }
 
         return symptoms.length > 0
             ? symptoms.join(", ")
             : "Tidak ada gejala";
     };
 
-    const formatTime = (date: string) => {
-        return new Date(date).toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-        });
+    // ==========================================
+    // FORMAT TANGGAL
+    // ==========================================
+
+    const formatDate = (date: string) => {
+        return new Date(date).toLocaleString(
+            "id-ID",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+            }
+        );
     };
 
-    const sortedReports = [...reports].sort((a, b) => {
-        // Belum dinilai paling atas
-        if (!a.assessment && b.assessment) return -1;
-        if (a.assessment && !b.assessment) return 1;
+    // ==========================================
+    // PAGINATION
+    // ==========================================
 
-        const riskOrder = {
-            TINGGI: 3,
-            SEDANG: 2,
-            RENDAH: 1,
-        };
+    const totalPages = Math.ceil(
+        reports.length / ITEMS_PER_PAGE
+    );
 
-        const riskA = a.assessment
-            ? riskOrder[a.assessment.riskLevel]
-            : 4;
+    const startIndex =
+        (currentPage - 1) *
+        ITEMS_PER_PAGE;
 
-        const riskB = b.assessment
-            ? riskOrder[b.assessment.riskLevel]
-            : 4;
+    const endIndex =
+        startIndex + ITEMS_PER_PAGE;
 
-        return riskB - riskA;
-    });
+    const currentReports = reports.slice(
+        startIndex,
+        endIndex
+    );
+
+    const goToPage = (page: number) => {
+        if (
+            page < 1 ||
+            page > totalPages
+        ) {
+            return;
+        }
+
+        setCurrentPage(page);
+    };
 
     return (
         <div className="space-y-6">
@@ -109,97 +177,271 @@ export default function LaporanPage() {
                 </h1>
 
                 <p className="mt-1 text-sm text-muted-foreground">
-                    Daftar laporan kesehatan dari wilayah fasilitas Anda.
+                    Menampilkan 20 laporan kesehatan
+                    terbaru dari wilayah fasilitas Anda.
                 </p>
             </section>
 
-            {/* REPORT LIST */}
-            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="mb-4">
+            {/* TABLE */}
+            <section className="rounded-xl border border-border bg-card shadow-sm">
+                <div className="border-b px-5 py-4">
                     <h2 className="text-lg font-semibold">
-                        Daftar Laporan
+                        Laporan Terbaru
                     </h2>
 
-                    <p className="text-sm text-muted-foreground">
-                        Laporan diurutkan berdasarkan prioritas assessment.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Laporan diurutkan berdasarkan
+                        waktu masuk terbaru.
                     </p>
                 </div>
 
                 {isLoading ? (
-                    <p className="text-sm text-muted-foreground">
+                    <div className="px-5 py-8 text-center text-sm text-muted-foreground">
                         Memuat laporan...
-                    </p>
-                ) : sortedReports.length === 0 ? (
-                    <div className="rounded-lg border border-dashed p-6 text-center">
-                        <p className="text-sm text-muted-foreground">
-                            Belum ada laporan kesehatan.
-                        </p>
+                    </div>
+                ) : reports.length === 0 ? (
+                    <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+                        Belum ada laporan kesehatan.
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {sortedReports.map((report) => (
-                            <div
-                                key={report.id}
-                                className="flex items-center justify-between gap-4 rounded-lg border p-4"
-                            >
-                                <div className="min-w-0">
-                                    <p className="font-medium">
-                                        {getSymptoms(report)}
-                                    </p>
+                    <>
+                        {/* TABLE */}
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                                <thead>
+                                    <tr className="border-b bg-muted/40 text-left">
+                                        <th className="whitespace-nowrap px-4 py-3 font-semibold">
+                                            No
+                                        </th>
 
-                                    <p className="text-sm text-muted-foreground">
-                                        {report.region.name} •{" "}
-                                        {report.region.city}
-                                    </p>
+                                        <th className="whitespace-nowrap px-4 py-3 font-semibold">
+                                            Pasien / Gejala
+                                        </th>
 
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        Pelapor: {report.reporterName}
-                                    </p>
+                                        <th className="whitespace-nowrap px-4 py-3 font-semibold">
+                                            Wilayah
+                                        </th>
 
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        Dilaporkan pukul{" "}
-                                        {formatTime(report.reportedAt)}
-                                    </p>
-                                </div>
+                                        <th className="whitespace-nowrap px-4 py-3 font-semibold">
+                                            Waktu Laporan
+                                        </th>
 
-                                <div className="flex shrink-0 items-center gap-3">
-                                    {report.assessment ? (
-                                        <span
-                                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                                report.assessment.riskLevel ===
-                                                "TINGGI"
-                                                    ? "bg-red-100 text-red-700"
-                                                    : report.assessment
-                                                              .riskLevel ===
-                                                          "SEDANG"
-                                                        ? "bg-yellow-100 text-yellow-700"
-                                                        : "bg-green-100 text-green-700"
-                                            }`}
-                                        >
-                                            Risiko{" "}
-                                            {report.assessment.riskLevel}
-                                        </span>
-                                    ) : (
-                                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
-                                            Belum Dinilai
-                                        </span>
+                                        <th className="whitespace-nowrap px-4 py-3 font-semibold">
+                                            Assessment
+                                        </th>
+
+                                        <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">
+                                            Aksi
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {currentReports.map(
+                                        (
+                                            report,
+                                            index
+                                        ) => {
+                                            const rowNumber =
+                                                startIndex +
+                                                index +
+                                                1;
+
+                                            return (
+                                                <tr
+                                                    key={
+                                                        report.id
+                                                    }
+                                                    className="border-b last:border-b-0 hover:bg-muted/30"
+                                                >
+                                                    {/* NO */}
+                                                    <td className="px-4 py-4 align-top">
+                                                        {
+                                                            rowNumber
+                                                        }
+                                                    </td>
+
+                                                    {/* PASIEN / GEJALA */}
+                                                    <td className="min-w-[220px] px-4 py-4 align-top">
+                                                        <p className="font-medium">
+                                                            {
+                                                                report.reporterName
+                                                            }
+                                                        </p>
+
+                                                        <p className="mt-1 text-xs text-muted-foreground">
+                                                            {getSymptoms(
+                                                                report
+                                                            )}
+                                                        </p>
+                                                    </td>
+
+                                                    {/* WILAYAH */}
+                                                    <td className="px-4 py-4 align-top">
+                                                        <p className="font-medium">
+                                                            {
+                                                                report
+                                                                    .region
+                                                                    .name
+                                                            }
+                                                        </p>
+
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {
+                                                                report
+                                                                    .region
+                                                                    .city
+                                                            }
+                                                        </p>
+                                                    </td>
+
+                                                    {/* WAKTU */}
+                                                    <td className="whitespace-nowrap px-4 py-4 align-top text-muted-foreground">
+                                                        {formatDate(
+                                                            report.reportedAt
+                                                        )}
+                                                    </td>
+
+                                                    {/* ASSESSMENT */}
+                                                    <td className="px-4 py-4 align-top">
+                                                        {report.assessment ? (
+                                                            <span
+                                                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                                                                    report
+                                                                        .assessment
+                                                                        .riskLevel ===
+                                                                    "TINGGI"
+                                                                        ? "bg-red-100 text-red-700"
+                                                                        : report
+                                                                              .assessment
+                                                                              .riskLevel ===
+                                                                          "SEDANG"
+                                                                        ? "bg-yellow-100 text-yellow-700"
+                                                                        : "bg-green-100 text-green-700"
+                                                                }`}
+                                                            >
+                                                                Risiko{" "}
+                                                                {
+                                                                    report
+                                                                        .assessment
+                                                                        .riskLevel
+                                                                }
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                                                                Belum Dinilai
+                                                            </span>
+                                                        )}
+                                                    </td>
+
+                                                    {/* AKSI */}
+                                                    <td className="px-4 py-4 text-right align-top">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                router.push(
+                                                                    `/nakes/reports/${report.id}`
+                                                                )
+                                                            }
+                                                            className="rounded-md border px-3 py-2 text-xs font-medium transition hover:bg-muted"
+                                                        >
+                                                            Detail
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        }
                                     )}
+                                </tbody>
+                            </table>
+                        </div>
 
+                        {/* PAGINATION */}
+                        <div className="flex flex-col gap-3 border-t px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm text-muted-foreground">
+                                Menampilkan{" "}
+                                <span className="font-medium text-foreground">
+                                    {startIndex + 1}
+                                </span>{" "}
+                                -{" "}
+                                <span className="font-medium text-foreground">
+                                    {Math.min(
+                                        endIndex,
+                                        reports.length
+                                    )}
+                                </span>{" "}
+                                dari{" "}
+                                <span className="font-medium text-foreground">
+                                    {reports.length}
+                                </span>{" "}
+                                laporan
+                            </p>
+
+                            <div className="flex items-center gap-1">
+                                {/* SEBELUMNYA */}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        goToPage(
+                                            currentPage -
+                                                1
+                                        )
+                                    }
+                                    disabled={
+                                        currentPage === 1
+                                    }
+                                    className="rounded-md border px-3 py-2 text-sm font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Sebelumnya
+                                </button>
+
+                                {/* NOMOR HALAMAN */}
+                                {Array.from(
+                                    {
+                                        length: totalPages,
+                                    },
+                                    (_, index) =>
+                                        index + 1
+                                ).map((page) => (
                                     <button
+                                        key={page}
                                         type="button"
                                         onClick={() =>
-                                            router.push(
-                                                `/nakes/reports/${report.id}`
+                                            goToPage(
+                                                page
                                             )
                                         }
-                                        className="rounded-md border px-3 py-2 text-xs font-medium transition hover:bg-muted"
+                                        className={`h-9 min-w-9 rounded-md px-3 text-sm font-medium transition ${
+                                            currentPage ===
+                                            page
+                                                ? "bg-red-600 text-white"
+                                                : "border hover:bg-muted"
+                                        }`}
                                     >
-                                        Detail
+                                        {page}
                                     </button>
-                                </div>
+                                ))}
+
+                                {/* BERIKUTNYA */}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        goToPage(
+                                            currentPage +
+                                                1
+                                        )
+                                    }
+                                    disabled={
+                                        currentPage ===
+                                        totalPages
+                                    }
+                                    className="rounded-md border px-3 py-2 text-sm font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Berikutnya
+                                </button>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    </>
                 )}
             </section>
         </div>

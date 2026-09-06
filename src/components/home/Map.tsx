@@ -457,12 +457,8 @@ export function RegionMap({
     );
 
     const filteredFacilities = useMemo(() => {
-<<<<<<< HEAD
-        const valid = facilities.filter(
-=======
         const facilitiesArray = Array.isArray(facilities) ? facilities : [];
         const valid = facilitiesArray.filter(
->>>>>>> 334f6f186167aa34294285d00751522e37bab653
             (f) =>
                 typeof f.latitude === "number" &&
                 typeof f.longitude === "number" &&
@@ -568,22 +564,6 @@ export function RegionMap({
                                 }
                             />
                         )}
-<<<<<<< HEAD
-
-                        {filteredFacilities.map((facility) => (
-                            <Marker
-                                key={facility.id}
-                                position={[facility.latitude, facility.longitude]}
-                                icon={getFacilityIcon(facility.type)}
-                            >
-                                <Popup>
-                                    <FacilityPopup facility={facility} />
-                                </Popup>
-                            </Marker>
-                        ))}
-                    </MapContainer>
-=======
->>>>>>> 334f6f186167aa34294285d00751522e37bab653
 
                         {filteredFacilities.map((facility) => (
                             <Marker
