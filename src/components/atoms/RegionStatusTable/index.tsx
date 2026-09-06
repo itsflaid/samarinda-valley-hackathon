@@ -38,8 +38,7 @@ export function RegionStatusTable({
   const [editingRegion, setEditingRegion] =
     useState<Region | null>(null);
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     status: "AMAN" as Region["status"],
@@ -51,42 +50,47 @@ export function RegionStatusTable({
   // FETCH WILAYAH
   // =========================================================
 
-  const fetchRegions = async () => {
-    try {
-      setLoading(true);
-
-      const response = await fetch(
-        "/api/petugas/regions",
-        {
-          cache: "no-store",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          "Gagal mengambil wilayah"
-        );
-      }
-
-      const data = await response.json();
-
-      setRegions(data);
-    } catch (error) {
-      console.error(
-        "FETCH PETUGAS REGIONS ERROR:",
-        error
-      );
-
-      toast.error(
-        "Gagal mengambil data wilayah"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchRegions();
+    const loadRegions = async () => {
+      try {
+        const response = await fetch(
+          "/api/petugas/regions",
+          {
+            cache: "no-store",
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              "Gagal mengambil wilayah"
+          );
+        }
+
+        setRegions(
+          Array.isArray(data) ? data : []
+        );
+      } catch (error) {
+        console.error(
+          "FETCH PETUGAS REGIONS ERROR:",
+          error
+        );
+
+        setRegions([]);
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Gagal mengambil data wilayah"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRegions();
   }, []);
 
   // =========================================================
@@ -131,7 +135,8 @@ export function RegionStatusTable({
         {
           method: "PUT",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             status: form.status,
@@ -151,17 +156,15 @@ export function RegionStatusTable({
         );
       }
 
-      toast.success(
-        "Pemeriksaan air berhasil diperbarui"
-      );
-
+      // Update state lokal
       setRegions((prev) =>
         prev.map((region) =>
           region.id === editingRegion.id
             ? {
                 ...region,
                 status: form.status,
-                ipaStatus: form.ipaStatus,
+                ipaStatus:
+                  form.ipaStatus,
                 ipaCondition:
                   form.ipaCondition.trim(),
               }
@@ -170,6 +173,10 @@ export function RegionStatusTable({
       );
 
       setEditingRegion(null);
+
+      toast.success(
+        "Pemeriksaan air berhasil diperbarui"
+      );
     } catch (error) {
       console.error(
         "UPDATE WATER STATUS ERROR:",
@@ -251,7 +258,8 @@ export function RegionStatusTable({
                     colSpan={7}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
-                    Belum ada wilayah yang ditugaskan.
+                    Belum ada wilayah yang
+                    ditugaskan.
                   </td>
                 </tr>
               ) : (
@@ -273,7 +281,7 @@ export function RegionStatusTable({
                         {region.city}
                       </td>
 
-                      {/* STATUS */}
+                      {/* STATUS WILAYAH */}
                       <td className="px-4 py-3">
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-medium ${
@@ -332,9 +340,9 @@ export function RegionStatusTable({
         </div>
       </div>
 
-      {/* ===================================================== */}
-      {/* MODAL PEMERIKSAAN */}
-      {/* ===================================================== */}
+      {/* =====================================================
+          MODAL PEMERIKSAAN
+      ===================================================== */}
 
       {editingRegion && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -381,7 +389,8 @@ export function RegionStatusTable({
                     setForm((prev) => ({
                       ...prev,
                       ipaStatus:
-                        e.target.value as Region["ipaStatus"],
+                        e.target
+                          .value as Region["ipaStatus"],
                     }))
                   }
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"

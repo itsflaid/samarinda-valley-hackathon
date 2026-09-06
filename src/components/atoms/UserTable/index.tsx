@@ -1,10 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Pencil, Trash2, X } from "lucide-react";
+import {
+  useEffect,
+  useState,
+} from "react";
+import {
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
-type Role = "NAKES" | "PETUGAS";
+type Role =
+  | "NAKES"
+  | "PETUGAS";
 
 type Region = {
   id: string;
@@ -15,7 +24,10 @@ type Region = {
 type Facility = {
   id: string;
   name: string;
-  type: "PUSKESMAS" | "RUMAH_SAKIT" | "KLINIK";
+  type:
+    | "PUSKESMAS"
+    | "RUMAH_SAKIT"
+    | "KLINIK";
   region?: {
     id: string;
     name: string;
@@ -29,7 +41,11 @@ type User = {
   email: string;
   nohp: string;
   role: Role;
-  profesi?: "DOKTER" | "PERAWAT" | "BIDAN" | null;
+  profesi?:
+    | "DOKTER"
+    | "PERAWAT"
+    | "BIDAN"
+    | null;
   instansi?: string | null;
 
   regions?: Region[];
@@ -42,22 +58,46 @@ type UserTableProps = {
   role: Role;
 };
 
-export default function UserTable({ role }: UserTableProps) {
-  const [users, setUsers] = useState<User[]>([]);
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-
-  const [selectedRegionIds, setSelectedRegionIds] = useState<string[]>([]);
-  const [selectedFacilityIds, setSelectedFacilityIds] = useState<string[]>(
+export default function UserTable({
+  role,
+}: UserTableProps) {
+  const [users, setUsers] = useState<User[]>(
     []
   );
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+  const [regions, setRegions] = useState<
+    Region[]
+  >([]);
 
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [facilities, setFacilities] =
+    useState<Facility[]>([]);
+
+  const [
+    selectedRegionIds,
+    setSelectedRegionIds,
+  ] = useState<string[]>([]);
+
+  const [
+    selectedFacilityIds,
+    setSelectedFacilityIds,
+  ] = useState<string[]>([]);
+
+  const [isModalOpen, setIsModalOpen] =
+    useState(false);
+
+  const [isLoading, setIsLoading] =
+    useState(true);
+
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+
+  const [
+    isDeleteLoading,
+    setIsDeleteLoading,
+  ] = useState(false);
+
+  const [editingUser, setEditingUser] =
+    useState<User | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -69,123 +109,177 @@ export default function UserTable({ role }: UserTableProps) {
   });
 
   // =========================================================
-  // FETCH USERS
+  // INITIAL LOAD
   // =========================================================
 
-  const fetchUsers = async () => {
-    try {
-      setIsLoading(true);
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
 
-      const response = await fetch(`/api/users?role=${role}`);
+        const usersRequest = fetch(
+          `/api/users?role=${role}`,
+          {
+            cache: "no-store",
+          }
+        );
 
-      if (!response.ok) {
-        throw new Error("Gagal mengambil data user");
+        const secondaryRequest =
+          role === "NAKES"
+            ? fetch("/api/facilities", {
+                cache: "no-store",
+              })
+            : fetch("/api/regions", {
+                cache: "no-store",
+              });
+
+        const [
+          usersResponse,
+          secondaryResponse,
+        ] = await Promise.all([
+          usersRequest,
+          secondaryRequest,
+        ]);
+
+        const usersData =
+          await usersResponse.json();
+
+        const secondaryData =
+          await secondaryResponse.json();
+
+        if (!usersResponse.ok) {
+          throw new Error(
+            usersData?.message ||
+              "Gagal mengambil data user"
+          );
+        }
+
+        if (!secondaryResponse.ok) {
+          throw new Error(
+            secondaryData?.message ||
+              (role === "NAKES"
+                ? "Gagal mengambil fasilitas"
+                : "Gagal mengambil wilayah")
+          );
+        }
+
+        setUsers(
+          Array.isArray(usersData)
+            ? usersData
+            : []
+        );
+
+        if (role === "NAKES") {
+          const facilityData =
+            Array.isArray(
+              secondaryData
+            )
+              ? secondaryData
+              : secondaryData?.facilities;
+
+          setFacilities(
+            Array.isArray(
+              facilityData
+            )
+              ? facilityData
+              : []
+          );
+
+          setRegions([]);
+        } else {
+          const regionData =
+            Array.isArray(
+              secondaryData
+            )
+              ? secondaryData
+              : secondaryData?.regions;
+
+          setRegions(
+            Array.isArray(regionData)
+              ? regionData
+              : []
+          );
+
+          setFacilities([]);
+        }
+      } catch (error) {
+        console.error(
+          "FETCH USER TABLE ERROR:",
+          error
+        );
+
+        setUsers([]);
+        setRegions([]);
+        setFacilities([]);
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Gagal mengambil data"
+        );
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      const data = await response.json();
-
-      setUsers(data);
-    } catch (error) {
-      console.error("FETCH USERS ERROR:", error);
-      toast.error("Gagal mengambil data user");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    loadData();
+  }, [role]);
 
   // =========================================================
-  // FETCH REGIONS
+  // REFRESH USERS
   // =========================================================
 
-  const fetchRegions = async () => {
+  const refreshUsers = async () => {
     try {
-      const response = await fetch("/api/regions");
+      const response = await fetch(
+        `/api/users?role=${role}`,
+        {
+          cache: "no-store",
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error("Gagal mengambil wilayah");
-      }
-
-      const data = await response.json();
-
-      setRegions(data);
-    } catch (error) {
-      console.error("FETCH REGIONS ERROR:", error);
-      toast.error("Gagal mengambil data wilayah");
-    }
-  };
-
-  // =========================================================
-  // FETCH FACILITIES
-  // =========================================================
-
-  const fetchFacilities = async () => {
-    try {
-      const response = await fetch("/api/facilities", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      console.log("STATUS /api/facilities:", response.status);
-
-      const data = await response.json();
-
-      console.log("DATA /api/facilities:", data);
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data?.message || "Gagal mengambil fasilitas"
+          data?.message ||
+            "Gagal mengambil data user"
         );
       }
 
-      // API kamu seharusnya mengembalikan array.
-      // Tapi kita buat aman kalau ternyata response berbentuk { facilities: [...] }
-      const facilityData = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.facilities)
-          ? data.facilities
-          : [];
-
-      console.log("FACILITY DATA:", facilityData);
-
-      setFacilities(facilityData);
+      setUsers(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } catch (error) {
-      console.error("FETCH FACILITIES ERROR:", error);
-
-      setFacilities([]);
+      console.error(
+        "REFRESH USERS ERROR:",
+        error
+      );
 
       toast.error(
         error instanceof Error
           ? error.message
-          : "Gagal mengambil data fasilitas"
+          : "Gagal memperbarui data user"
       );
     }
   };
 
   // =========================================================
-  // INITIAL FETCH
-  // =========================================================
-
-  useEffect(() => {
-  fetchUsers();
-
-  if (role === "NAKES") {
-    fetchFacilities();
-  } else {
-    fetchRegions();
-    setFacilities([]);
-  }
-}, [role]);
-
-  // =========================================================
-  // HANDLE FORM CHANGE
+  // FORM CHANGE
   // =========================================================
 
   const handleChange = (
     e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      HTMLInputElement |
+        HTMLSelectElement |
+        HTMLTextAreaElement
     >
   ) => {
-    const { name, value } = e.target;
+    const { name, value } =
+      e.target;
 
     setForm((prev) => ({
       ...prev,
@@ -207,14 +301,19 @@ export default function UserTable({ role }: UserTableProps) {
       instansi: "",
     });
 
-    setSelectedRegionIds([]);
-    setSelectedFacilityIds([]);
+    setSelectedRegionIds(
+      []
+    );
+
+    setSelectedFacilityIds(
+      []
+    );
 
     setEditingUser(null);
   };
 
   // =========================================================
-  // OPEN ADD MODAL
+  // ADD
   // =========================================================
 
   const handleAdd = () => {
@@ -223,10 +322,12 @@ export default function UserTable({ role }: UserTableProps) {
   };
 
   // =========================================================
-  // OPEN EDIT MODAL
+  // EDIT
   // =========================================================
 
-  const handleEdit = (user: User) => {
+  const handleEdit = (
+    user: User
+  ) => {
     setEditingUser(user);
 
     setForm({
@@ -234,18 +335,22 @@ export default function UserTable({ role }: UserTableProps) {
       email: user.email,
       nohp: user.nohp,
       password: "",
-      profesi: user.profesi ?? "",
-      instansi: user.instansi ?? "",
+      profesi:
+        user.profesi ?? "",
+      instansi:
+        user.instansi ?? "",
     });
 
-    // Assignment PETUGAS
     setSelectedRegionIds(
-      user.regions?.map((region) => region.id) ?? []
+      user.regions?.map(
+        (region) => region.id
+      ) ?? []
     );
 
-    // Assignment NAKES
     setSelectedFacilityIds(
-      user.facilities?.map((facility) => facility.id) ?? []
+      user.facilities?.map(
+        (facility) => facility.id
+      ) ?? []
     );
 
     setIsModalOpen(true);
@@ -255,46 +360,73 @@ export default function UserTable({ role }: UserTableProps) {
   // CLOSE MODAL
   // =========================================================
 
-  const handleCloseModal = () => {
-    if (isSubmitting) return;
+  const handleCloseModal =
+    () => {
+      if (isSubmitting) {
+        return;
+      }
 
-    setIsModalOpen(false);
-    resetForm();
-  };
+      setIsModalOpen(false);
+      resetForm();
+    };
 
   // =========================================================
-  // SUBMIT FORM
+  // SUBMIT
   // =========================================================
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
-    // Validasi umum
-    if (!form.name || !form.email || !form.nohp) {
-      toast.error("Lengkapi data user terlebih dahulu");
+    if (
+      !form.name ||
+      !form.email ||
+      !form.nohp
+    ) {
+      toast.error(
+        "Lengkapi data user terlebih dahulu"
+      );
       return;
     }
 
-    // Password wajib saat tambah user
-    if (!editingUser && !form.password) {
-      toast.error("Password wajib diisi");
+    if (
+      !editingUser &&
+      !form.password
+    ) {
+      toast.error(
+        "Password wajib diisi"
+      );
       return;
     }
 
-    // Validasi Nakes
-    if (role === "NAKES" && !form.profesi) {
-      toast.error("Profesi wajib diisi untuk Nakes");
+    if (
+      role === "NAKES" &&
+      !form.profesi
+    ) {
+      toast.error(
+        "Profesi wajib diisi untuk Nakes"
+      );
       return;
     }
 
-    // Validasi assignment
-    if (role === "NAKES" && selectedFacilityIds.length === 0) {
-      toast.error("Pilih minimal satu fasilitas kesehatan");
+    if (
+      role === "NAKES" &&
+      selectedFacilityIds.length === 0
+    ) {
+      toast.error(
+        "Pilih minimal satu fasilitas kesehatan"
+      );
       return;
     }
 
-    if (role === "PETUGAS" && selectedRegionIds.length === 0) {
-      toast.error("Pilih minimal satu wilayah kerja");
+    if (
+      role === "PETUGAS" &&
+      selectedRegionIds.length === 0
+    ) {
+      toast.error(
+        "Pilih minimal satu wilayah kerja"
+      );
       return;
     }
 
@@ -307,37 +439,53 @@ export default function UserTable({ role }: UserTableProps) {
         nohp: form.nohp,
         password: form.password,
         role,
-        profesi: role === "NAKES" ? form.profesi : null,
-        instansi: form.instansi || null,
+        profesi:
+          role === "NAKES"
+            ? form.profesi
+            : null,
+        instansi:
+          form.instansi || null,
 
         ...(role === "NAKES"
           ? {
-            facilityIds: selectedFacilityIds,
-          }
+              facilityIds:
+                selectedFacilityIds,
+            }
           : {
-            regionIds: selectedRegionIds,
-          }),
+              regionIds:
+                selectedRegionIds,
+            }),
       };
 
       const url = editingUser
         ? `/api/users/${editingUser.id}`
         : "/api/users";
 
-      const method = editingUser ? "PUT" : "POST";
+      const method = editingUser
+        ? "PUT"
+        : "POST";
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        url,
+        {
+          method,
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify(
+            payload
+          ),
+        }
+      );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data?.message || "Gagal menyimpan data user"
+          data?.message ||
+            "Gagal menyimpan data user"
         );
       }
 
@@ -350,9 +498,12 @@ export default function UserTable({ role }: UserTableProps) {
       setIsModalOpen(false);
       resetForm();
 
-      await fetchUsers();
+      await refreshUsers();
     } catch (error) {
-      console.error("SUBMIT USER ERROR:", error);
+      console.error(
+        "SUBMIT USER ERROR:",
+        error
+      );
 
       toast.error(
         error instanceof Error
@@ -365,36 +516,52 @@ export default function UserTable({ role }: UserTableProps) {
   };
 
   // =========================================================
-  // DELETE USER
+  // DELETE
   // =========================================================
 
-  const handleDelete = async (user: User) => {
-    const confirmed = window.confirm(
-      `Yakin ingin menghapus user "${user.name}"?`
-    );
+  const handleDelete = async (
+    user: User
+  ) => {
+    const confirmed =
+      window.confirm(
+        `Yakin ingin menghapus user "${user.name}"?`
+      );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     try {
       setIsDeleteLoading(true);
 
-      const response = await fetch(`/api/users/${user.id}`, {
-        method: "DELETE",
-      });
+      const response =
+        await fetch(
+          `/api/users/${user.id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data?.message || "Gagal menghapus user"
+          data?.message ||
+            "Gagal menghapus user"
         );
       }
 
-      toast.success("User berhasil dihapus");
+      toast.success(
+        "User berhasil dihapus"
+      );
 
-      await fetchUsers();
+      await refreshUsers();
     } catch (error) {
-      console.error("DELETE USER ERROR:", error);
+      console.error(
+        "DELETE USER ERROR:",
+        error
+      );
 
       toast.error(
         error instanceof Error
@@ -407,21 +574,22 @@ export default function UserTable({ role }: UserTableProps) {
   };
 
   // =========================================================
-  // FORMAT ROLE
+  // FORMAT
   // =========================================================
 
-  const formatRole = (role: Role) => {
-    if (role === "NAKES") return "Nakes";
-    if (role === "PETUGAS") return "Petugas";
+  const formatRole = (
+    userRole: Role
+  ) => {
+    if (userRole === "NAKES") {
+      return "Nakes";
+    }
 
-    return role;
+    return "Petugas";
   };
 
-  // =========================================================
-  // FORMAT FACILITY TYPE
-  // =========================================================
-
-  const formatFacilityType = (type: Facility["type"]) => {
+  const formatFacilityType = (
+    type: Facility["type"]
+  ) => {
     switch (type) {
       case "PUSKESMAS":
         return "Puskesmas";
@@ -444,18 +612,21 @@ export default function UserTable({ role }: UserTableProps) {
   return (
     <>
       <div className="space-y-6">
-        {/* ================================================= */}
         {/* HEADER */}
-        {/* ================================================= */}
 
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold">
-              Data {formatRole(role)}
+              Data{" "}
+              {formatRole(role)}
             </h2>
 
             <p className="text-sm text-muted-foreground">
-              Kelola akun dan penugasan {formatRole(role).toLowerCase()}.
+              Kelola akun dan penugasan{" "}
+              {formatRole(
+                role
+              ).toLowerCase()}
+              .
             </p>
           </div>
 
@@ -468,9 +639,7 @@ export default function UserTable({ role }: UserTableProps) {
           </button>
         </div>
 
-        {/* ================================================= */}
         {/* TABLE */}
-        {/* ================================================= */}
 
         <div className="overflow-hidden rounded-xl border bg-card">
           <div className="overflow-x-auto">
@@ -493,14 +662,16 @@ export default function UserTable({ role }: UserTableProps) {
                     No. HP
                   </th>
 
-                  {role === "NAKES" && (
+                  {role ===
+                    "NAKES" && (
                     <th className="px-4 py-3 text-left font-semibold">
                       Profesi
                     </th>
                   )}
 
                   <th className="px-4 py-3 text-left font-semibold">
-                    {role === "NAKES"
+                    {role ===
+                    "NAKES"
                       ? "Fasilitas Kerja"
                       : "Wilayah Kerja"}
                   </th>
@@ -519,143 +690,212 @@ export default function UserTable({ role }: UserTableProps) {
                 {isLoading ? (
                   <tr>
                     <td
-                      colSpan={role === "NAKES" ? 8 : 7}
+                      colSpan={
+                        role ===
+                        "NAKES"
+                          ? 8
+                          : 7
+                      }
                       className="px-4 py-10 text-center text-muted-foreground"
                     >
                       Memuat data...
                     </td>
                   </tr>
-                ) : users.length === 0 ? (
+                ) : users.length ===
+                  0 ? (
                   <tr>
                     <td
-                      colSpan={role === "NAKES" ? 8 : 7}
+                      colSpan={
+                        role ===
+                        "NAKES"
+                          ? 8
+                          : 7
+                      }
                       className="px-4 py-10 text-center text-muted-foreground"
                     >
-                      Belum ada data {formatRole(role).toLowerCase()}.
+                      Belum ada data{" "}
+                      {formatRole(
+                        role
+                      ).toLowerCase()}
+                      .
                     </td>
                   </tr>
                 ) : (
-                  users.map((user, index) => (
-                    <tr
-                      key={user.id}
-                      className="border-b last:border-b-0"
-                    >
-                      {/* No */}
-                      <td className="px-4 py-4 align-top">
-                        {index + 1}
-                      </td>
-
-                      {/* Nama */}
-                      <td className="px-4 py-4 align-top">
-                        <div>
-                          <p className="font-medium">
-                            {user.name}
-                          </p>
-
-                          <p className="text-xs text-muted-foreground">
-                            {formatRole(user.role)}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* Email */}
-                      <td className="px-4 py-4 align-top">
-                        {user.email}
-                      </td>
-
-                      {/* No HP */}
-                      <td className="px-4 py-4 align-top">
-                        {user.nohp}
-                      </td>
-
-                      {/* Profesi Nakes */}
-                      {role === "NAKES" && (
+                  users.map(
+                    (
+                      user,
+                      index
+                    ) => (
+                      <tr
+                        key={
+                          user.id
+                        }
+                        className="border-b last:border-b-0"
+                      >
                         <td className="px-4 py-4 align-top">
-                          {user.profesi || "-"}
+                          {index + 1}
                         </td>
-                      )}
 
-                      {/* Assignment */}
-                      <td className="px-4 py-4 align-top">
-                        {role === "NAKES" ? (
-                          user.facilities &&
-                            user.facilities.length > 0 ? (
+                        <td className="px-4 py-4 align-top">
+                          <div>
+                            <p className="font-medium">
+                              {
+                                user.name
+                              }
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              {formatRole(
+                                user.role
+                              )}
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-4 align-top">
+                          {
+                            user.email
+                          }
+                        </td>
+
+                        <td className="px-4 py-4 align-top">
+                          {
+                            user.nohp
+                          }
+                        </td>
+
+                        {role ===
+                          "NAKES" && (
+                          <td className="px-4 py-4 align-top">
+                            {user.profesi ||
+                              "-"}
+                          </td>
+                        )}
+
+                        {/* ASSIGNMENT */}
+
+                        <td className="px-4 py-4 align-top">
+                          {role ===
+                          "NAKES" ? (
+                            user.facilities &&
+                            user
+                              .facilities
+                              .length >
+                              0 ? (
+                              <div className="space-y-1">
+                                {user.facilities.map(
+                                  (
+                                    facility
+                                  ) => (
+                                    <div
+                                      key={
+                                        facility.id
+                                      }
+                                    >
+                                      <p className="font-medium">
+                                        {
+                                          facility.name
+                                        }
+                                      </p>
+
+                                      <p className="text-xs text-muted-foreground">
+                                        {formatFacilityType(
+                                          facility.type
+                                        )}
+
+                                        {facility.region
+                                          ? ` • ${facility.region.name}`
+                                          : ""}
+                                      </p>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                Belum ditugaskan
+                              </span>
+                            )
+                          ) : user.regions &&
+                            user.regions
+                              .length >
+                              0 ? (
                             <div className="space-y-1">
-                              {user.facilities.map((facility) => (
-                                <div key={facility.id}>
-                                  <p className="font-medium">
-                                    {facility.name}
-                                  </p>
+                              {user.regions.map(
+                                (
+                                  region
+                                ) => (
+                                  <div
+                                    key={
+                                      region.id
+                                    }
+                                  >
+                                    <p className="font-medium">
+                                      {
+                                        region.name
+                                      }
+                                    </p>
 
-                                  <p className="text-xs text-muted-foreground">
-                                    {formatFacilityType(
-                                      facility.type
-                                    )}
-
-                                    {facility.region
-                                      ? ` • ${facility.region.name}`
-                                      : ""}
-                                  </p>
-                                </div>
-                              ))}
+                                    <p className="text-xs text-muted-foreground">
+                                      {
+                                        region.city
+                                      }
+                                    </p>
+                                  </div>
+                                )
+                              )}
                             </div>
                           ) : (
                             <span className="text-muted-foreground">
                               Belum ditugaskan
                             </span>
-                          )
-                        ) : user.regions &&
-                          user.regions.length > 0 ? (
-                          <div className="space-y-1">
-                            {user.regions.map((region) => (
-                              <div key={region.id}>
-                                <p className="font-medium">
-                                  {region.name}
-                                </p>
+                          )}
+                        </td>
 
-                                <p className="text-xs text-muted-foreground">
-                                  {region.city}
-                                </p>
-                              </div>
-                            ))}
+                        {/* INSTANSI */}
+
+                        <td className="px-4 py-4 align-top">
+                          {user.instansi ||
+                            "-"}
+                        </td>
+
+                        {/* ACTION */}
+
+                        <td className="px-4 py-4 align-top">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleEdit(
+                                  user
+                                )
+                              }
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-md border transition hover:bg-muted"
+                              title="Edit user"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDelete(
+                                  user
+                                )
+                              }
+                              disabled={
+                                isDeleteLoading
+                              }
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Hapus user"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            Belum ditugaskan
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Instansi */}
-                      <td className="px-4 py-4 align-top">
-                        {user.instansi || "-"}
-                      </td>
-
-                      {/* Aksi */}
-                      <td className="px-4 py-4 align-top">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(user)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border transition hover:bg-muted"
-                            title="Edit user"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(user)}
-                            disabled={isDeleteLoading}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Hapus user"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                      </tr>
+                    )
+                  )
                 )}
               </tbody>
             </table>
@@ -663,44 +903,58 @@ export default function UserTable({ role }: UserTableProps) {
         </div>
       </div>
 
-      {/* ===================================================== */}
-      {/* MODAL */}
-      {/* ===================================================== */}
+      {/* =====================================================
+          MODAL
+      ===================================================== */}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-2xl rounded-xl bg-background shadow-xl">
-            {/* Modal Header */}
+            {/* HEADER */}
+
             <div className="flex items-center justify-between border-b px-6 py-4">
               <div>
                 <h3 className="text-lg font-semibold">
                   {editingUser
-                    ? `Edit ${formatRole(role)}`
-                    : `Tambah ${formatRole(role)}`}
+                    ? `Edit ${formatRole(
+                        role
+                      )}`
+                    : `Tambah ${formatRole(
+                        role
+                      )}`}
                 </h3>
 
                 <p className="text-sm text-muted-foreground">
-                  Isi data akun dan penugasan.
+                  Isi data akun dan
+                  penugasan.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={handleCloseModal}
-                disabled={isSubmitting}
+                onClick={
+                  handleCloseModal
+                }
+                disabled={
+                  isSubmitting
+                }
                 className="rounded-md p-2 transition hover:bg-muted disabled:opacity-50"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Modal Body */}
+            {/* BODY */}
+
             <form
-              onSubmit={handleSubmit}
+              onSubmit={
+                handleSubmit
+              }
               className="max-h-[75vh] overflow-y-auto"
             >
               <div className="space-y-5 px-6 py-5">
-                {/* Nama */}
+                {/* NAMA */}
+
                 <div>
                   <label className="mb-2 block text-sm font-medium">
                     Nama Lengkap
@@ -709,15 +963,20 @@ export default function UserTable({ role }: UserTableProps) {
                   <input
                     type="text"
                     name="name"
-                    value={form.name}
-                    onChange={handleChange}
+                    value={
+                      form.name
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="Masukkan nama lengkap"
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                     required
                   />
                 </div>
 
-                {/* Email */}
+                {/* EMAIL */}
+
                 <div>
                   <label className="mb-2 block text-sm font-medium">
                     Email
@@ -726,15 +985,20 @@ export default function UserTable({ role }: UserTableProps) {
                   <input
                     type="email"
                     name="email"
-                    value={form.email}
-                    onChange={handleChange}
+                    value={
+                      form.email
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="contoh@email.com"
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                     required
                   />
                 </div>
 
-                {/* No HP */}
+                {/* NO HP */}
+
                 <div>
                   <label className="mb-2 block text-sm font-medium">
                     Nomor HP
@@ -743,21 +1007,29 @@ export default function UserTable({ role }: UserTableProps) {
                   <input
                     type="text"
                     name="nohp"
-                    value={form.nohp}
-                    onChange={handleChange}
+                    value={
+                      form.nohp
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="08xxxxxxxxxx"
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                     required
                   />
                 </div>
 
-                {/* Password */}
+                {/* PASSWORD */}
+
                 <div>
                   <label className="mb-2 block text-sm font-medium">
                     Password
+
                     {editingUser && (
                       <span className="ml-1 text-xs font-normal text-muted-foreground">
-                        (kosongkan jika tidak ingin mengubah)
+                        (kosongkan jika
+                        tidak ingin
+                        mengubah)
                       </span>
                     )}
                   </label>
@@ -765,20 +1037,28 @@ export default function UserTable({ role }: UserTableProps) {
                   <input
                     type="password"
                     name="password"
-                    value={form.password}
-                    onChange={handleChange}
+                    value={
+                      form.password
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder={
                       editingUser
                         ? "Password baru"
                         : "Masukkan password"
                     }
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
-                    required={!editingUser}
+                    required={
+                      !editingUser
+                    }
                   />
                 </div>
 
-                {/* Profesi Nakes */}
-                {role === "NAKES" && (
+                {/* PROFESI */}
+
+                {role ===
+                  "NAKES" && (
                   <div>
                     <label className="mb-2 block text-sm font-medium">
                       Profesi
@@ -786,8 +1066,12 @@ export default function UserTable({ role }: UserTableProps) {
 
                     <select
                       name="profesi"
-                      value={form.profesi}
-                      onChange={handleChange}
+                      value={
+                        form.profesi
+                      }
+                      onChange={
+                        handleChange
+                      }
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                       required
                     >
@@ -810,7 +1094,8 @@ export default function UserTable({ role }: UserTableProps) {
                   </div>
                 )}
 
-                {/* Instansi */}
+                {/* INSTANSI */}
+
                 <div>
                   <label className="mb-2 block text-sm font-medium">
                     Instansi
@@ -819,89 +1104,115 @@ export default function UserTable({ role }: UserTableProps) {
                   <input
                     type="text"
                     name="instansi"
-                    value={form.instansi}
-                    onChange={handleChange}
+                    value={
+                      form.instansi
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="Contoh: Dinas Kesehatan"
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
 
-                {/* ================================================= */}
-                {/* NAKES → FACILITIES */}
-                {/* ================================================= */}
+                {/* NAKES → FACILITY */}
 
-                {role === "NAKES" ? (
+                {role ===
+                "NAKES" ? (
                   <div>
                     <label className="mb-2 block text-sm font-medium">
                       Fasilitas Kesehatan
                     </label>
 
                     <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border p-3">
-                      {facilities.length === 0 ? (
+                      {facilities.length ===
+                      0 ? (
                         <p className="text-sm text-muted-foreground">
-                          Belum ada data fasilitas.
+                          Belum ada data
+                          fasilitas.
                         </p>
                       ) : (
-                        facilities.map((facility) => (
-                          <label
-                            key={facility.id}
-                            className="flex cursor-pointer items-start gap-3 rounded-md p-2 text-sm transition hover:bg-muted"
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-1"
-                              checked={selectedFacilityIds.includes(
+                        facilities.map(
+                          (
+                            facility
+                          ) => (
+                            <label
+                              key={
                                 facility.id
-                              )}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedFacilityIds(
-                                    (prev) => [
-                                      ...prev,
-                                      facility.id,
-                                    ]
-                                  );
-                                } else {
-                                  setSelectedFacilityIds(
-                                    (prev) =>
-                                      prev.filter(
-                                        (id) =>
-                                          id !== facility.id
-                                      )
-                                  );
-                                }
-                              }}
-                            />
-
-                            <div>
-                              <p className="font-medium">
-                                {facility.name}
-                              </p>
-
-                              <p className="text-xs text-muted-foreground">
-                                {formatFacilityType(
-                                  facility.type
+                              }
+                              className="flex cursor-pointer items-start gap-3 rounded-md p-2 text-sm transition hover:bg-muted"
+                            >
+                              <input
+                                type="checkbox"
+                                className="mt-1"
+                                checked={selectedFacilityIds.includes(
+                                  facility.id
                                 )}
+                                onChange={(
+                                  e
+                                ) => {
+                                  if (
+                                    e
+                                      .target
+                                      .checked
+                                  ) {
+                                    setSelectedFacilityIds(
+                                      (
+                                        prev
+                                      ) => [
+                                        ...prev,
+                                        facility.id,
+                                      ]
+                                    );
+                                  } else {
+                                    setSelectedFacilityIds(
+                                      (
+                                        prev
+                                      ) =>
+                                        prev.filter(
+                                          (
+                                            id
+                                          ) =>
+                                            id !==
+                                            facility.id
+                                        )
+                                    );
+                                  }
+                                }}
+                              />
 
-                                {facility.region
-                                  ? ` • ${facility.region.name}`
-                                  : ""}
-                              </p>
-                            </div>
-                          </label>
-                        ))
+                              <div>
+                                <p className="font-medium">
+                                  {
+                                    facility.name
+                                  }
+                                </p>
+
+                                <p className="text-xs text-muted-foreground">
+                                  {formatFacilityType(
+                                    facility.type
+                                  )}
+
+                                  {facility.region
+                                    ? ` • ${facility.region.name}`
+                                    : ""}
+                                </p>
+                              </div>
+                            </label>
+                          )
+                        )
                       )}
                     </div>
 
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Pilih satu atau lebih fasilitas tempat Nakes
+                      Pilih satu atau
+                      lebih fasilitas
+                      tempat Nakes
                       bertugas.
                     </p>
                   </div>
                 ) : (
-                  /* ================================================= */
-                  /* PETUGAS → REGIONS */
-                  /* ================================================= */
+                  /* PETUGAS → REGION */
 
                   <div>
                     <label className="mb-2 block text-sm font-medium">
@@ -909,72 +1220,102 @@ export default function UserTable({ role }: UserTableProps) {
                     </label>
 
                     <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border p-3">
-                      {regions.length === 0 ? (
+                      {regions.length ===
+                      0 ? (
                         <p className="text-sm text-muted-foreground">
-                          Belum ada data wilayah.
+                          Belum ada data
+                          wilayah.
                         </p>
                       ) : (
-                        regions.map((region) => (
-                          <label
-                            key={region.id}
-                            className="flex cursor-pointer items-center gap-3 rounded-md p-2 text-sm transition hover:bg-muted"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedRegionIds.includes(
+                        regions.map(
+                          (
+                            region
+                          ) => (
+                            <label
+                              key={
                                 region.id
-                              )}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedRegionIds(
-                                    (prev) => [
-                                      ...prev,
-                                      region.id,
-                                    ]
-                                  );
-                                } else {
-                                  setSelectedRegionIds(
-                                    (prev) =>
-                                      prev.filter(
-                                        (id) =>
-                                          id !== region.id
-                                      )
-                                  );
-                                }
-                              }}
-                            />
+                              }
+                              className="flex cursor-pointer items-center gap-3 rounded-md p-2 text-sm transition hover:bg-muted"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedRegionIds.includes(
+                                  region.id
+                                )}
+                                onChange={(
+                                  e
+                                ) => {
+                                  if (
+                                    e
+                                      .target
+                                      .checked
+                                  ) {
+                                    setSelectedRegionIds(
+                                      (
+                                        prev
+                                      ) => [
+                                        ...prev,
+                                        region.id,
+                                      ]
+                                    );
+                                  } else {
+                                    setSelectedRegionIds(
+                                      (
+                                        prev
+                                      ) =>
+                                        prev.filter(
+                                          (
+                                            id
+                                          ) =>
+                                            id !==
+                                            region.id
+                                        )
+                                    );
+                                  }
+                                }}
+                              />
 
-                            <div>
-                              <p className="font-medium">
-                                {region.name}
-                              </p>
+                              <div>
+                                <p className="font-medium">
+                                  {
+                                    region.name
+                                  }
+                                </p>
 
-                              <p className="text-xs text-muted-foreground">
-                                {region.city}
-                              </p>
-                            </div>
-                          </label>
-                        ))
+                                <p className="text-xs text-muted-foreground">
+                                  {
+                                    region.city
+                                  }
+                                </p>
+                              </div>
+                            </label>
+                          )
+                        )
                       )}
                     </div>
 
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Pilih satu atau lebih wilayah yang menjadi
-                      tanggung jawab Petugas.
+                      Pilih satu atau
+                      lebih wilayah
+                      yang menjadi
+                      tanggung jawab
+                      Petugas.
                     </p>
                   </div>
                 )}
               </div>
 
-              {/* ================================================= */}
-              {/* MODAL FOOTER */}
-              {/* ================================================= */}
+              {/* FOOTER */}
 
               <div className="flex justify-end gap-3 border-t px-6 py-4">
                 <button
                   type="button"
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
+                  onClick={
+                    handleCloseModal
+                  }
+                  disabled={
+                    isSubmitting
+                  }
                   className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted disabled:opacity-50"
                 >
                   Batal
@@ -982,7 +1323,9 @@ export default function UserTable({ role }: UserTableProps) {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting
+                  }
                   className="rounded-md bg-red-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting

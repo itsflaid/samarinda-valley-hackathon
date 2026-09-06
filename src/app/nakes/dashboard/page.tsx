@@ -32,6 +32,9 @@ type DashboardData = {
         fever: boolean;
         dehydration: boolean;
 
+        latitude: number;
+        longitude: number;
+
         reportedAt: string;
 
         region: {
@@ -267,21 +270,21 @@ export default function NakesDashboardPage() {
             </section>
 
             {/* PETA RISIKO */}
-<section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-  <div className="mb-4">
-    <h2 className="text-lg font-semibold">
-      Peta Risiko Kesehatan
-    </h2>
+            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                <div className="mb-4">
+                    <h2 className="text-lg font-semibold">
+                        Peta Risiko Kesehatan
+                    </h2>
 
-    <p className="text-sm text-muted-foreground">
-      Sebaran laporan kesehatan berdasarkan lokasi.
-    </p>
-  </div>
+                    <p className="text-sm text-muted-foreground">
+                        Sebaran laporan kesehatan berdasarkan lokasi.
+                    </p>
+                </div>
 
-  <RiskMap
-    reports={data?.latestReports ?? []}
-  />
-</section>
+                <RiskMap
+                    reports={data?.latestReports ?? []}
+                />
+            </section>
 
         </div>
     );

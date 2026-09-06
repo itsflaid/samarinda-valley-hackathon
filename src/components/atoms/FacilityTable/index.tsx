@@ -22,7 +22,11 @@ type Staff = {
         id: string;
         name: string;
         email: string;
-        profesi?: "DOKTER" | "PERAWAT" | "BIDAN" | null;
+        profesi?:
+            | "DOKTER"
+            | "PERAWAT"
+            | "BIDAN"
+            | null;
     };
 };
 
@@ -48,13 +52,23 @@ export function FacilityTable({
     title: string;
     subtitle: string;
 }) {
-    const [facilities, setFacilities] = useState<Facility[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [facilities, setFacilities] =
+        useState<Facility[]>([]);
+
+    const [regions, setRegions] =
+        useState<Region[]>([]);
+
+    const [isLoading, setIsLoading] =
+        useState(true);
+
     const [isDeleteLoading, setIsDeleteLoading] =
         useState(false);
+
     const [editingFacility, setEditingFacility] =
         useState<Facility | null>(null);
-    const [regions, setRegions] = useState<Region[]>([]);
+
+    const [isEditSubmitting, setIsEditSubmitting] =
+        useState(false);
 
     const [editForm, setEditForm] = useState({
         name: "",
@@ -68,64 +82,144 @@ export function FacilityTable({
         isActive: true,
     });
 
-    const [isEditSubmitting, setIsEditSubmitting] =
-        useState(false);
+    // =========================================================
+    // FETCH DATA
+    // =========================================================
 
-    const fetchRegions = async () => {
-        try {
-            const response = await fetch("/api/regions");
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setIsLoading(true);
 
-            if (!response.ok) {
-                throw new Error(
-                    "Gagal mengambil wilayah"
+                const [
+                    facilitiesResponse,
+                    regionsResponse,
+                ] = await Promise.all([
+                    fetch("/api/facilities", {
+                        cache: "no-store",
+                    }),
+                    fetch("/api/regions", {
+                        cache: "no-store",
+                    }),
+                ]);
+
+                const facilitiesData =
+                    await facilitiesResponse.json();
+
+                const regionsData =
+                    await regionsResponse.json();
+
+                if (!facilitiesResponse.ok) {
+                    throw new Error(
+                        facilitiesData?.message ||
+                            "Gagal mengambil data fasilitas"
+                    );
+                }
+
+                if (!regionsResponse.ok) {
+                    throw new Error(
+                        regionsData?.message ||
+                            "Gagal mengambil data wilayah"
+                    );
+                }
+
+                const facilityList = Array.isArray(
+                    facilitiesData
+                )
+                    ? facilitiesData
+                    : facilitiesData?.facilities;
+
+                const regionList = Array.isArray(
+                    regionsData
+                )
+                    ? regionsData
+                    : regionsData?.regions;
+
+                setFacilities(
+                    Array.isArray(facilityList)
+                        ? facilityList
+                        : []
                 );
+
+                setRegions(
+                    Array.isArray(regionList)
+                        ? regionList
+                        : []
+                );
+            } catch (error) {
+                console.error(
+                    "FETCH FACILITY DATA ERROR:",
+                    error
+                );
+
+                setFacilities([]);
+                setRegions([]);
+
+                toast.error(
+                    error instanceof Error
+                        ? error.message
+                        : "Gagal mengambil data fasilitas"
+                );
+            } finally {
+                setIsLoading(false);
             }
+        };
+
+        loadData();
+    }, []);
+
+    // =========================================================
+    // REFRESH FACILITIES
+    // =========================================================
+
+    const refreshFacilities = async () => {
+        try {
+            const response = await fetch(
+                "/api/facilities",
+                {
+                    cache: "no-store",
+                }
+            );
 
             const data = await response.json();
 
-            setRegions(data);
+            if (!response.ok) {
+                throw new Error(
+                    data?.message ||
+                        "Gagal mengambil data fasilitas"
+                );
+            }
+
+            const facilityList = Array.isArray(data)
+                ? data
+                : data?.facilities;
+
+            setFacilities(
+                Array.isArray(facilityList)
+                    ? facilityList
+                    : []
+            );
         } catch (error) {
             console.error(
-                "FETCH REGIONS ERROR:",
+                "REFRESH FACILITIES ERROR:",
                 error
             );
 
             toast.error(
-                "Gagal mengambil data wilayah"
+                error instanceof Error
+                    ? error.message
+                    : "Gagal memperbarui data fasilitas"
             );
         }
     };
 
-    const fetchFacilities = async () => {
-        try {
-            setIsLoading(true);
+    // =========================================================
+    // FORMAT TYPE
+    // =========================================================
 
-            const response = await fetch("/api/facilities");
-
-            if (!response.ok) {
-                throw new Error("Gagal mengambil data fasilitas");
-            }
-
-            const data = await response.json();
-
-            console.log("STATUS API:", response.status);
-            console.log("DATA FACILITIES:", data);
-
-            setFacilities(data);
-        } catch (error) {
-            console.error(error);
-            toast.error("Gagal mengambil data fasilitas");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-    fetchFacilities();
-    fetchRegions();
-}, []);
-
-    const formatType = (type: FacilityType) => {
+    const formatType = (
+        type: FacilityType
+    ) => {
         if (type === "PUSKESMAS") {
             return "Puskesmas";
         }
@@ -137,7 +231,13 @@ export function FacilityTable({
         return "Klinik";
     };
 
-    const handleEdit = (facility: Facility) => {
+    // =========================================================
+    // HANDLE EDIT
+    // =========================================================
+
+    const handleEdit = (
+        facility: Facility
+    ) => {
         setEditingFacility(facility);
 
         setEditForm({
@@ -145,8 +245,12 @@ export function FacilityTable({
             type: facility.type,
             address: facility.address,
             regionId: facility.regionId,
-            latitude: String(facility.latitude),
-            longitude: String(facility.longitude),
+            latitude: String(
+                facility.latitude
+            ),
+            longitude: String(
+                facility.longitude
+            ),
             phone: facility.phone ?? "",
             openingHours:
                 facility.openingHours ?? "",
@@ -154,22 +258,34 @@ export function FacilityTable({
         });
     };
 
+    // =========================================================
+    // HANDLE EDIT CHANGE
+    // =========================================================
+
     const handleEditChange = (
         e: React.ChangeEvent<
-            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+            HTMLInputElement |
+                HTMLSelectElement |
+                HTMLTextAreaElement
         >
     ) => {
-        const { name, value, type } = e.target;
+        const { name, value, type } =
+            e.target;
 
         setEditForm((prev) => ({
             ...prev,
             [name]:
                 type === "checkbox"
-                    ? (e.target as HTMLInputElement)
-                        .checked
+                    ? (
+                          e.target as HTMLInputElement
+                      ).checked
                     : value,
         }));
     };
+
+    // =========================================================
+    // SUBMIT EDIT
+    // =========================================================
 
     const handleEditSubmit = async (
         e: React.FormEvent<HTMLFormElement>
@@ -181,8 +297,8 @@ export function FacilityTable({
         }
 
         if (
-            !editForm.name ||
-            !editForm.address ||
+            !editForm.name.trim() ||
+            !editForm.address.trim() ||
             !editForm.regionId ||
             !editForm.latitude ||
             !editForm.longitude
@@ -201,13 +317,16 @@ export function FacilityTable({
                 {
                     method: "PUT",
                     headers: {
-                        "Content-Type": "application/json",
+                        "Content-Type":
+                            "application/json",
                     },
                     body: JSON.stringify({
-                        name: editForm.name,
+                        name: editForm.name.trim(),
                         type: editForm.type,
-                        address: editForm.address,
-                        regionId: editForm.regionId,
+                        address:
+                            editForm.address.trim(),
+                        regionId:
+                            editForm.regionId,
                         latitude: Number(
                             editForm.latitude
                         ),
@@ -215,9 +334,10 @@ export function FacilityTable({
                             editForm.longitude
                         ),
                         phone:
-                            editForm.phone || null,
+                            editForm.phone.trim() ||
+                            null,
                         openingHours:
-                            editForm.openingHours ||
+                            editForm.openingHours.trim() ||
                             null,
                         isActive:
                             editForm.isActive,
@@ -225,12 +345,13 @@ export function FacilityTable({
                 }
             );
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
                     data?.message ||
-                    "Gagal memperbarui fasilitas"
+                        "Gagal memperbarui fasilitas"
                 );
             }
 
@@ -240,7 +361,7 @@ export function FacilityTable({
 
             setEditingFacility(null);
 
-            await fetchFacilities();
+            await refreshFacilities();
         } catch (error) {
             console.error(
                 "EDIT FACILITY ERROR:",
@@ -257,10 +378,17 @@ export function FacilityTable({
         }
     };
 
-    const handleDelete = async (facility: Facility) => {
-        const confirmed = window.confirm(
-            `Apakah kamu yakin ingin menghapus ${facility.name}?`
-        );
+    // =========================================================
+    // DELETE
+    // =========================================================
+
+    const handleDelete = async (
+        facility: Facility
+    ) => {
+        const confirmed =
+            window.confirm(
+                `Apakah kamu yakin ingin menghapus ${facility.name}?`
+            );
 
         if (!confirmed) {
             return;
@@ -276,237 +404,278 @@ export function FacilityTable({
                 }
             );
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
             if (!response.ok) {
-                toast.error(
-                    data.message ||
-                    "Gagal menghapus fasilitas"
+                throw new Error(
+                    data?.message ||
+                        "Gagal menghapus fasilitas"
                 );
-
-                return;
             }
 
             toast.success(
                 "Fasilitas berhasil dihapus"
             );
 
-            await fetchFacilities();
+            await refreshFacilities();
         } catch (error) {
-            console.error(error);
+            console.error(
+                "DELETE FACILITY ERROR:",
+                error
+            );
 
-            toast.error("Terjadi kesalahan");
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Gagal menghapus fasilitas"
+            );
         } finally {
             setIsDeleteLoading(false);
         }
     };
 
     return (
-        <div className="w-full space-y-4">
+        <>
+            <div className="w-full space-y-4">
+                {/* HEADER */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-semibold">
+                            {title}
+                        </h2>
 
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-semibold">
-                        {title}
-                    </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {subtitle}
+                        </p>
+                    </div>
 
-                    <p className="text-sm text-muted-foreground">
-                        {subtitle}
-                    </p>
+                    <Link
+                        href="/admin/fasilitas/tambah"
+                        className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                    >
+                        + Tambah
+                    </Link>
                 </div>
 
-                <Link
-                    href="/admin/fasilitas/tambah"
-                    className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                >
-                    + Tambah
-                </Link>
+                {/* TABLE */}
+                <section className="min-w-0 w-full">
+                    <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                        <table className="min-w-full divide-y divide-border">
+                            <thead>
+                                <tr className="text-left text-sm font-medium text-muted-foreground">
+                                    <th className="px-4 py-3">
+                                        No
+                                    </th>
+
+                                    <th className="px-4 py-3">
+                                        Nama Fasilitas
+                                    </th>
+
+                                    <th className="px-4 py-3">
+                                        Jenis
+                                    </th>
+
+                                    <th className="px-4 py-3">
+                                        Wilayah
+                                    </th>
+
+                                    <th className="px-4 py-3">
+                                        Alamat
+                                    </th>
+
+                                    <th className="px-4 py-3">
+                                        Nakes
+                                    </th>
+
+                                    <th className="px-4 py-3">
+                                        Status
+                                    </th>
+
+                                    <th className="px-4 py-3">
+                                        Aksi
+                                    </th>
+                                </tr>
+                            </thead>
+
+                            <tbody className="divide-y divide-border">
+                                {isLoading ? (
+                                    <tr>
+                                        <td
+                                            colSpan={8}
+                                            className="px-4 py-8 text-center text-sm text-muted-foreground"
+                                        >
+                                            Memuat data fasilitas...
+                                        </td>
+                                    </tr>
+                                ) : facilities.length ===
+                                  0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={8}
+                                            className="px-4 py-8 text-center text-sm text-muted-foreground"
+                                        >
+                                            Belum ada data fasilitas.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    facilities.map(
+                                        (
+                                            facility,
+                                            index
+                                        ) => (
+                                            <tr
+                                                key={
+                                                    facility.id
+                                                }
+                                                className="text-sm text-foreground even:bg-muted/40"
+                                            >
+                                                {/* NO */}
+                                                <td className="px-4 py-3">
+                                                    {index +
+                                                        1}
+                                                </td>
+
+                                                {/* NAMA */}
+                                                <td className="px-4 py-3 font-medium">
+                                                    {
+                                                        facility.name
+                                                    }
+                                                </td>
+
+                                                {/* JENIS */}
+                                                <td className="px-4 py-3">
+                                                    {formatType(
+                                                        facility.type
+                                                    )}
+                                                </td>
+
+                                                {/* WILAYAH */}
+                                                <td className="px-4 py-3">
+                                                    <div>
+                                                        <p className="font-medium">
+                                                            {
+                                                                facility
+                                                                    .region
+                                                                    .name
+                                                            }
+                                                        </p>
+
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {
+                                                                facility
+                                                                    .region
+                                                                    .city
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                </td>
+
+                                                {/* ALAMAT */}
+                                                <td className="max-w-xs px-4 py-3">
+                                                    <p className="truncate">
+                                                        {
+                                                            facility.address
+                                                        }
+                                                    </p>
+                                                </td>
+
+                                                {/* NAKES */}
+                                                <td className="px-4 py-3">
+                                                    {facility.staffs.length >
+                                                    0 ? (
+                                                        <div className="space-y-1">
+                                                            <p className="font-medium">
+                                                                {
+                                                                    facility
+                                                                        .staffs
+                                                                        .length
+                                                                }{" "}
+                                                                Nakes
+                                                            </p>
+
+                                                            <p className="max-w-[180px] truncate text-xs text-muted-foreground">
+                                                                {facility.staffs
+                                                                    .map(
+                                                                        (
+                                                                            staff
+                                                                        ) =>
+                                                                            staff
+                                                                                .user
+                                                                                .name
+                                                                    )
+                                                                    .join(
+                                                                        ", "
+                                                                    )}
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">
+                                                            Belum ada
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* STATUS */}
+                                                <td className="px-4 py-3">
+                                                    {facility.isActive ? (
+                                                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                                                            Aktif
+                                                        </span>
+                                                    ) : (
+                                                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+                                                            Tidak Aktif
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* AKSI */}
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleEdit(
+                                                                    facility
+                                                                )
+                                                            }
+                                                            className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                                                        >
+                                                            <Pencil className="size-3" />
+                                                            Edit
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleDelete(
+                                                                    facility
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                isDeleteLoading
+                                                            }
+                                                            className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                                        >
+                                                            <Trash2 className="size-3" />
+                                                            Hapus
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )
+                                    )
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
-            {/* Table */}
-            <section className="min-w-0 w-full">
-                <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            {/* =====================================================
+                MODAL EDIT
+            ===================================================== */}
 
-                    <table className="min-w-full divide-y divide-border">
-
-                        <thead>
-                            <tr className="text-left text-sm font-medium text-muted-foreground">
-
-                                <th className="px-4 py-3">
-                                    No
-                                </th>
-
-                                <th className="px-4 py-3">
-                                    Nama Fasilitas
-                                </th>
-
-                                <th className="px-4 py-3">
-                                    Jenis
-                                </th>
-
-                                <th className="px-4 py-3">
-                                    Wilayah
-                                </th>
-
-                                <th className="px-4 py-3">
-                                    Alamat
-                                </th>
-
-                                <th className="px-4 py-3">
-                                    Nakes
-                                </th>
-
-                                <th className="px-4 py-3">
-                                    Status
-                                </th>
-
-                                <th className="px-4 py-3">
-                                    Aksi
-                                </th>
-
-                            </tr>
-                        </thead>
-
-                        <tbody className="divide-y divide-border">
-
-                            {isLoading ? (
-                                <tr>
-                                    <td
-                                        colSpan={8}
-                                        className="px-4 py-8 text-center text-sm text-muted-foreground"
-                                    >
-                                        Memuat data fasilitas...
-                                    </td>
-                                </tr>
-                            ) : facilities.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={8}
-                                        className="px-4 py-8 text-center text-sm text-muted-foreground"
-                                    >
-                                        Belum ada data fasilitas.
-                                    </td>
-                                </tr>
-                            ) : (
-                                facilities.map((facility, index) => (
-                                    <tr
-                                        key={facility.id}
-                                        className="text-sm text-foreground even:bg-muted/40"
-                                    >
-
-                                        {/* No */}
-                                        <td className="px-4 py-3">
-                                            {index + 1}
-                                        </td>
-
-                                        {/* Nama */}
-                                        <td className="px-4 py-3 font-medium">
-                                            {facility.name}
-                                        </td>
-
-                                        {/* Jenis */}
-                                        <td className="px-4 py-3">
-                                            {formatType(facility.type)}
-                                        </td>
-
-                                        {/* Wilayah */}
-                                        <td className="px-4 py-3">
-                                            <div>
-                                                <p className="font-medium">
-                                                    {facility.region.name}
-                                                </p>
-
-                                                <p className="text-xs text-muted-foreground">
-                                                    {facility.region.city}
-                                                </p>
-                                            </div>
-                                        </td>
-
-                                        {/* Alamat */}
-                                        <td className="max-w-xs px-4 py-3">
-                                            <p className="truncate">
-                                                {facility.address}
-                                            </p>
-                                        </td>
-
-                                        {/* Nakes */}
-                                        <td className="px-4 py-3">
-                                            {facility.staffs.length > 0 ? (
-                                                <div className="space-y-1">
-                                                    <p className="font-medium">
-                                                        {facility.staffs.length} Nakes
-                                                    </p>
-
-                                                    <p className="max-w-[180px] truncate text-xs text-muted-foreground">
-                                                        {facility.staffs
-                                                            .map(
-                                                                (staff) =>
-                                                                    staff.user.name
-                                                            )
-                                                            .join(", ")}
-                                                    </p>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    Belum ada
-                                                </span>
-                                            )}
-                                        </td>
-
-                                        {/* Status */}
-                                        <td className="px-4 py-3">
-                                            {facility.isActive ? (
-                                                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
-                                                    Aktif
-                                                </span>
-                                            ) : (
-                                                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                                                    Tidak Aktif
-                                                </span>
-                                            )}
-                                        </td>
-
-                                        {/* Aksi */}
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleEdit(facility)
-                                                    }
-                                                    className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
-                                                >
-                                                    <Pencil className="size-3" />
-                                                    Edit
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleDelete(facility)
-                                                    }
-                                                    disabled={isDeleteLoading}
-                                                    className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
-                                                >
-                                                    <Trash2 className="size-3" />
-                                                    Hapus
-                                                </button>
-
-                                            </div>
-                                        </td>
-
-                                    </tr>
-                                ))
-                            )}
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-            </section>
             {editingFacility && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-2xl rounded-xl bg-background shadow-xl">
@@ -525,9 +694,13 @@ export function FacilityTable({
                             <button
                                 type="button"
                                 onClick={() =>
-                                    setEditingFacility(null)
+                                    setEditingFacility(
+                                        null
+                                    )
                                 }
-                                disabled={isEditSubmitting}
+                                disabled={
+                                    isEditSubmitting
+                                }
                                 className="rounded-md p-2 hover:bg-muted disabled:opacity-50"
                             >
                                 <X className="h-5 w-5" />
@@ -536,7 +709,9 @@ export function FacilityTable({
 
                         {/* FORM */}
                         <form
-                            onSubmit={handleEditSubmit}
+                            onSubmit={
+                                handleEditSubmit
+                            }
                             className="max-h-[75vh] overflow-y-auto"
                         >
                             <div className="space-y-5 px-6 py-5">
@@ -549,8 +724,12 @@ export function FacilityTable({
                                     <input
                                         type="text"
                                         name="name"
-                                        value={editForm.name}
-                                        onChange={handleEditChange}
+                                        value={
+                                            editForm.name
+                                        }
+                                        onChange={
+                                            handleEditChange
+                                        }
                                         className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                                         required
                                     />
@@ -564,8 +743,12 @@ export function FacilityTable({
 
                                     <select
                                         name="type"
-                                        value={editForm.type}
-                                        onChange={handleEditChange}
+                                        value={
+                                            editForm.type
+                                        }
+                                        onChange={
+                                            handleEditChange
+                                        }
                                         className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                                     >
                                         <option value="PUSKESMAS">
@@ -590,8 +773,12 @@ export function FacilityTable({
 
                                     <select
                                         name="regionId"
-                                        value={editForm.regionId}
-                                        onChange={handleEditChange}
+                                        value={
+                                            editForm.regionId
+                                        }
+                                        onChange={
+                                            handleEditChange
+                                        }
                                         className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                                         required
                                     >
@@ -600,13 +787,24 @@ export function FacilityTable({
                                         </option>
 
                                         {regions.map(
-                                            (region) => (
+                                            (
+                                                region
+                                            ) => (
                                                 <option
-                                                    key={region.id}
-                                                    value={region.id}
+                                                    key={
+                                                        region.id
+                                                    }
+                                                    value={
+                                                        region.id
+                                                    }
                                                 >
-                                                    {region.name} -{" "}
-                                                    {region.city}
+                                                    {
+                                                        region.name
+                                                    }{" "}
+                                                    -{" "}
+                                                    {
+                                                        region.city
+                                                    }
                                                 </option>
                                             )
                                         )}
@@ -621,8 +819,12 @@ export function FacilityTable({
 
                                     <textarea
                                         name="address"
-                                        value={editForm.address}
-                                        onChange={handleEditChange}
+                                        value={
+                                            editForm.address
+                                        }
+                                        onChange={
+                                            handleEditChange
+                                        }
                                         rows={3}
                                         className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                                         required
@@ -639,8 +841,12 @@ export function FacilityTable({
                                         type="number"
                                         step="any"
                                         name="latitude"
-                                        value={editForm.latitude}
-                                        onChange={handleEditChange}
+                                        value={
+                                            editForm.latitude
+                                        }
+                                        onChange={
+                                            handleEditChange
+                                        }
                                         className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                                         required
                                     />
@@ -656,8 +862,12 @@ export function FacilityTable({
                                         type="number"
                                         step="any"
                                         name="longitude"
-                                        value={editForm.longitude}
-                                        onChange={handleEditChange}
+                                        value={
+                                            editForm.longitude
+                                        }
+                                        onChange={
+                                            handleEditChange
+                                        }
                                         className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                                         required
                                     />
@@ -672,8 +882,12 @@ export function FacilityTable({
                                     <input
                                         type="text"
                                         name="phone"
-                                        value={editForm.phone}
-                                        onChange={handleEditChange}
+                                        value={
+                                            editForm.phone
+                                        }
+                                        onChange={
+                                            handleEditChange
+                                        }
                                         className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                                     />
                                 </div>
@@ -690,7 +904,9 @@ export function FacilityTable({
                                         value={
                                             editForm.openingHours
                                         }
-                                        onChange={handleEditChange}
+                                        onChange={
+                                            handleEditChange
+                                        }
                                         placeholder="08:00 - 16:00"
                                         className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
                                     />
@@ -701,8 +917,12 @@ export function FacilityTable({
                                     <input
                                         type="checkbox"
                                         name="isActive"
-                                        checked={editForm.isActive}
-                                        onChange={handleEditChange}
+                                        checked={
+                                            editForm.isActive
+                                        }
+                                        onChange={
+                                            handleEditChange
+                                        }
                                     />
 
                                     <span className="text-sm font-medium">
@@ -716,9 +936,13 @@ export function FacilityTable({
                                 <button
                                     type="button"
                                     onClick={() =>
-                                        setEditingFacility(null)
+                                        setEditingFacility(
+                                            null
+                                        )
                                     }
-                                    disabled={isEditSubmitting}
+                                    disabled={
+                                        isEditSubmitting
+                                    }
                                     className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                                 >
                                     Batal
@@ -726,7 +950,9 @@ export function FacilityTable({
 
                                 <button
                                     type="submit"
-                                    disabled={isEditSubmitting}
+                                    disabled={
+                                        isEditSubmitting
+                                    }
                                     className="rounded-md bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {isEditSubmitting
@@ -738,6 +964,6 @@ export function FacilityTable({
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }
