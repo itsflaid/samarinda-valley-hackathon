@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client";
 
 import { useEffect, useState } from "react";
@@ -287,8 +286,4 @@ export default function NakesDashboardPage() {
         </div>
     );
 }
-=======
-export default function NakesDashboardPage() {
-  return <div>Dashboard Nakes</div>;
-}
->>>>>>> 334f6f186167aa34294285d00751522e37bab653
+
