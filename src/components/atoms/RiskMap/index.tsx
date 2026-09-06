@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   MapContainer,
   Marker,
@@ -10,7 +9,10 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-type RiskLevel = "RENDAH" | "SEDANG" | "TINGGI";
+type RiskLevel =
+  | "RENDAH"
+  | "SEDANG"
+  | "TINGGI";
 
 type RiskReport = {
   id: string;
@@ -46,7 +48,9 @@ const defaultPosition: [number, number] = [
   117.1536,
 ];
 
-function createMarkerIcon(riskLevel: RiskLevel | null) {
+function createMarkerIcon(
+  riskLevel: RiskLevel | null
+) {
   let color = "#6b7280";
 
   if (riskLevel === "TINGGI") {
@@ -83,20 +87,6 @@ function createMarkerIcon(riskLevel: RiskLevel | null) {
 export default function RiskMap({
   reports,
 }: RiskMapProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="flex h-[450px] items-center justify-center rounded-xl border bg-muted">
-        Memuat peta...
-      </div>
-    );
-  }
-
   const firstReport = reports[0];
 
   const center: [number, number] =
@@ -107,12 +97,23 @@ export default function RiskMap({
         ]
       : defaultPosition;
 
-  const getSymptoms = (report: RiskReport) => {
+  const getSymptoms = (
+    report: RiskReport
+  ) => {
     const symptoms: string[] = [];
 
-    if (report.diarrhea) symptoms.push("Diare");
-    if (report.vomiting) symptoms.push("Muntah");
-    if (report.fever) symptoms.push("Demam");
+    if (report.diarrhea) {
+      symptoms.push("Diare");
+    }
+
+    if (report.vomiting) {
+      symptoms.push("Muntah");
+    }
+
+    if (report.fever) {
+      symptoms.push("Demam");
+    }
+
     if (report.dehydration) {
       symptoms.push("Dehidrasi");
     }
@@ -125,7 +126,6 @@ export default function RiskMap({
   return (
     <div className="space-y-3">
       {/* MAP */}
-
       <div className="overflow-hidden rounded-xl border">
         <MapContainer
           center={center}
@@ -140,7 +140,8 @@ export default function RiskMap({
 
           {reports.map((report) => {
             const riskLevel =
-              report.assessment?.riskLevel ?? null;
+              report.assessment?.riskLevel ??
+              null;
 
             return (
               <Marker
@@ -149,7 +150,9 @@ export default function RiskMap({
                   report.latitude,
                   report.longitude,
                 ]}
-                icon={createMarkerIcon(riskLevel)}
+                icon={createMarkerIcon(
+                  riskLevel
+                )}
               >
                 <Popup>
                   <div className="space-y-2">
@@ -163,7 +166,8 @@ export default function RiskMap({
                     </p>
 
                     <p className="text-sm">
-                      Pelapor: {report.reporterName}
+                      Pelapor:{" "}
+                      {report.reporterName}
                     </p>
 
                     <p className="text-sm font-medium">
@@ -181,7 +185,6 @@ export default function RiskMap({
       </div>
 
       {/* LEGEND */}
-
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <div className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full bg-red-600" />
